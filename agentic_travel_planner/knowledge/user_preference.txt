@@ -1,5 +1,5 @@
 User name is John Doe.
-User is interested in Travelling.
+User is interested in Traveling.
 User prefers unique, authentic local experiences and typical tourist attractions too.
 User enjoys exploring new cities.
 User likes to try local cuisine, particularly vegetarian-friendly options.
