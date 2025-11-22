@@ -39,11 +39,16 @@ def generate_plan(request: TravelPlanRequest):
         
         # Return the raw result or a structured response
         # result.raw contains the final string output
+        
+        if hasattr(result, 'pydantic') and result.pydantic is not None:
+            plan_obj = result.pydantic    
+            return {
+                "status": "success",
+                "plan": plan_obj.model_dump()
+            }
         return {
             "status": "success",
             "plan": result.raw,
-            # If you want structured output and your crew returns it, you might access result.pydantic or similar
-            # For now, returning the raw text as requested.
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

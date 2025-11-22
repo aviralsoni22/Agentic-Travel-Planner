@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import json
 from crewai.tools import BaseTool
@@ -87,6 +88,15 @@ class ActivitySearchTool(BaseTool):
         if not api_key:
             return json.dumps({"error": "Missing GEOAPIFY_KEY in .env file"}, indent=2)
 
+        
+        numeric_remaining = None
+        try:
+            match = re.search(r"[-+]?\d*\.?\d+", str(updated_remaining_budget))
+            if match:
+                numeric_remaining = float(match.group())
+        except Exception:
+            numeric_remaining = None
+        
         # 2. STEP 1: GEOCODE HOTEL LOCATION
         # We need exact coordinates (Lat/Lon) to use the Places API "Circle" filter
         lat, lon = self._get_coordinates(hotel_location, api_key)
@@ -125,16 +135,30 @@ class ActivitySearchTool(BaseTool):
                     continue
 
                 # Estimate cost (API doesn't provide this, but Agent needs it for budget)
-                est_cost = 30 * num_travelers 
+                if numeric_remaining is not None and numeric_remaining > 0:
+                    # Rough pool per activity list (assume ~4 paid activities)
+                    per_activity_pool = numeric_remaining / 4.0
+
+                    # Clamp to "cheap" band per activity for the whole group
+                    min_per_activity = 5.0 * num_travelers
+                    max_per_activity = 25.0 * num_travelers
+
+                    est_cost = round(
+                        max(min_per_activity, min(per_activity_pool, max_per_activity)),
+                        2
+                    )
+                else:
+                    # Fallback: very conservative default if budget is unknown
+                    est_cost = round(10.0 * num_travelers, 2)
 
                 activities.append({
                     "name": name,
-                    "address": props.get("address_line2") or props.get("formatted", ""),
+                    "description": props.get("formatted", ""),
                     "category": props.get("categories", ["general"])[0],
-                    "estimated_cost": est_cost,
-                    "currency": "USD",
-                    "location_match": "Nearby Hotel"
-                })
+                    "cost": est_cost,
+                    "location": props.get("address_line2") or props.get("formatted", "")
+                    })
+
 
             if not activities:
                 return json.dumps({

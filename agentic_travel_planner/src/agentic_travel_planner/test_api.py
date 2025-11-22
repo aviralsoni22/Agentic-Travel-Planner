@@ -22,7 +22,7 @@ try:
     # we don't necessarily want to wait for the full crew execution which might take minutes.
     # However, if it connects and hangs, that's a good sign the crew is running.
     # If we want to fully verify, we need to wait.
-    response = requests.post(url, json=payload, timeout=10) 
+    response = requests.post(url, json=payload, timeout=60) 
     print("Response status:", response.status_code)
     print("Response body:", response.json())
 except requests.exceptions.ReadTimeout:
