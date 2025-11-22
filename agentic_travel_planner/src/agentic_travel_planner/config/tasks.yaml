@@ -1,0 +1,155 @@
+i_planning_task:
+  description: >
+    You are the 'Chief of Staff' managing a new trip request. Your first job is to
+    analyze the user's request and create a high-level plan.
+    
+    User Request Details:
+    - Source: {source}
+    - Destination: {destination}
+    - Start Date: {start_date}
+    - End Date: {end_date}
+    - Duration: {trip_duration} days
+    - Travelers: {num_travelers}
+    - Total Budget: {budget} USD
+    - Interests: {interests}
+    - Group Category: {group_category} 
+
+    You must break down the {budget} into three (3) allocated budgets:
+    1. 'flight_budget' 
+    2. 'hotel_budget'
+    3. 'activity_budget'
+    
+    Be intelligent with your allocation. For a {budget} trip,
+    realistically allocate funds for flights, accommodation, and activities.
+    For your information, traveller would prefer economy seats for flights.
+    You must also pass along all other original request details for the crew.
+    Budget allocation preference: 'flight_budget' <= 'activity_budget' <= 'hotel_budget'.
+
+  agent: Budgeting_Agent
+  expected_output: >
+    A JSON object string containing the initial plan. This JSON MUST include:
+    'destination', 'start_date', 'end_date', 'trip_duration', 'num_travelers', 'group_category',
+    'interests', 'budget', 'allocated_flight_budget',
+    'allocated_hotel_budget', and 'allocated_activity_budget'.
+  context: []
+  output_file: output/initialplan.json
+
+flight_research_task:
+  description: >
+    Find the most cost-effective flights. You MUST adhere to the
+    'allocated_flight_budget' provided by your manager in the initial plan.
+    You must look flights between the {start_date} and {end_date}. You are not allowed to search fights out of the given travel dates.
+   
+
+    Search Criteria:
+    - From: {source}'s airport IATA code
+    - To: {destination}'s airport IATA code
+    - Departure: on or after {start_date} from {source} to {destination}
+    - Return: before or on {end_date} from {destination} to {source}
+    - Travelers: {num_travelers}
+    - Group Category: {group_category}
+
+    You must use your `FlightSearchTool`. If you find flights, report their
+    details. If no flights are found within budget, you MUST report this
+    failure clearly so the manager can re-plan. If there are discounts available, you must report them.
+  agent: Flight_Researcher
+  expected_output: >
+    Return a JSON strictly matching FlightResearchTaskOutput:
+    {
+      "source": "<IATA or city>",
+      "destination": "<IATA or city>",
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD",
+      "num_travelers": <int>,
+      "selected_flight_total": <number>,
+      "currency": "<ISO>",
+      "flights": [/* up to 5 candidates with price+airline+links */],
+      "updated_remaining_budget": <(allocated_flight_budget + allocated_hotel_budget) - selected_flight_total>
+    }
+  context:
+    - i_planning_task
+  output_file: output/flight_research.json
+
+hotel_research_task:
+  description: >
+    Find the best-value, highly-rated hotels. You MUST use the
+    'updated_remaining_budget' from the flight task's output to determine
+    your maximum hotel budget. You must look hotel between the {start_date} and {end_date}.
+    
+    Search Criteria:
+    - City: {destination}
+    - Check-in: {start_date}
+    - Check-out: {end_date}
+    - Guests: {num_travelers}
+    - User Interests (for location): {interests}
+    - Group Category: {group_category}
+    
+    You must use your `HotelSearchTool`. Cross-reference hotel locations
+    with user interests (e.g., "history", "food"). If no suitable hotels
+    are found within the remaining budget, you MUST report this failure clearly
+    so the manager can re-plan. Hotels should be budget friendly and highly rated for stays.
+    The chosen hotel must provide best value for money to the traveller.
+
+  agent: Hotel_Researcher
+  expected_output: >
+    A JSON object string containing two keys:
+    1. 'hotels': A list of hotel details (e.g., name, address, total_cost, booking_url).
+       If no hotels are found, this must be an error message from your tool.
+    2. 'updated_remaining_budget': A float calculated by
+       (allocated_activity_budget + previous_remaining_budget) - actual_hotel_cost).
+  context:
+    - flight_research_task
+    - i_planning_task
+  output_file: output/hotel_research.json
+
+activity_planning_task:
+  description: >
+    Plan a schedule of activities based on user interests and the
+    *final* remaining budget.
+    
+    Planning Criteria:
+    - Location: {destination}
+    - Interests: {interests}
+    - Budget: You MUST use the 'updated_remaining_budget' from the hotel task's output.
+    - Hotel Location: Use the hotel details from the previous step to
+      plan a logical schedule, minimizing travel time.
+    - Group Category: {group_category}
+
+    You must use your `ActivitySearchTool`. Find tours, restaurants,
+    or museum tickets etc that match the interests and budget.
+  agent: Activity_Booker
+  expected_output: >
+    A JSON object string containing two keys:
+    1. 'activities': A list of activity details (e.g., name, description, cost, location).
+       If no activities are found, this must be an error message.
+    2. 'final_remaining_budget': A float calculated by
+       (previous_remaining_budget - total_activity_cost).
+  context:
+    - hotel_research_task
+  output_file: output/activitiy_planning.json
+
+final_assembly_task:
+  description: >
+    Assemble all the confirmed flight, hotel, and activity data from the
+    specialist agents into a single, coherent, day-by-day itinerary.
+    
+    You must:
+    1. Gather the outputs from `flight_research_task`, `hotel_research_task`,
+       and `activity_planning_task`.
+    2. If any specialist reported a failure that could not be resolved
+       (and your re-planning attempts failed), you must report this
+       impossibility clearly.
+    3. If all parts are successful, compile them into the 'FinalItinerary'
+       Pydantic model.
+    4. Calculate the 'total_cost' (flights + hotel + activities) and the
+       'remaining_budget' (which is the 'final_remaining_budget'
+       from the activity_planning_task).
+  expected_output: >
+    A complete travel itinerary formatted as a markdown without '```' that 
+    strictly conforms to the 'FinalItinerary' Pydantic model.
+  agent: Budgeting_Agent
+  context:
+    - flight_research_task
+    - hotel_research_task
+    - activity_planning_task
+  output_file: output/FinalItinerary.md
