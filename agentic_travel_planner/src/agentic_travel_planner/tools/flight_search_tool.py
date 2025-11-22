@@ -97,3 +97,4 @@ class FlightSearchTool(BaseTool):
                 "response_text": response.text,
                 "status": "error"
             }, indent=2)
+

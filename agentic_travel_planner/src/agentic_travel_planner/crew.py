@@ -223,6 +223,34 @@ class ActivityItem(BaseModel):
     )
     booking_url: Optional[str] = Field(None, description="Direct link to book or reserve")
     discount_info: Optional[str] = Field(None, description="Any promo/discount details")
+# class ActivityItem(BaseModel):
+#     """A planned activity that matches interests and budget."""
+#     name: str = Field(..., description="Activity or venue name")
+#     description: str = Field(..., description="Short activity description")
+#     category: Optional[str] = Field(
+#         None,
+#         description="e.g. tour, restaurant, museum, show"
+#     )
+#     cost: PositiveFloat = Field(
+#         ..., description="Total cost for the group for this activity"
+#     )
+#     location: str = Field(
+#         ..., description="Where the activity takes place (address/area)"
+#     )
+#     latitude: Optional[float] = Field(
+#         None, ge=-90, le=90, description="Lat if available"
+#     )
+#     longitude: Optional[float] = Field(
+#         None, ge=-180, le=180, description="Lng if available"
+#     )
+#     scheduled_time: Optional[datetime] = Field(
+#         None, description="Planned start datetime (local) if scheduled"
+#     )
+#     estimated_travel_time_minutes: Optional[int] = Field(
+#         None, ge=0, description="Approx travel time from hotel to activity"
+#     )
+#     booking_url: Optional[str] = Field(None, description="Direct link to book or reserve")
+#     discount_info: Optional[str] = Field(None, description="Any promo/discount details")
 
 
 class ActivityPlanningTaskOutput(BaseModel):
@@ -618,8 +646,6 @@ class AgenticTravelPlanner():
     @crew
     def crew(self) -> Crew:
         """Creates the AgenticTravelPlanner crew"""
-        # To learn how to add knowledge sources to your crew, check out the documentation:
-        # https://docs.crewai.com/concepts/knowledge#what-is-knowledge
         manager = self.Manager_and_Itinerary_Planner()
         agents_wo_manager = [a for a in self.agents if a.id != manager.id]
         return Crew(
