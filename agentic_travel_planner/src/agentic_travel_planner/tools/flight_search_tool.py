@@ -32,31 +32,26 @@ class FlightSearchTool(BaseTool):
         destination: str,
         start_date: str,
         end_date: str,
-        num_travelers: int = 1
+        num_travelers: int
     ) -> str:
         """
-        Search for flights using the RapidAPI booking.com endpoint.
-
-        Args:
-            source: Origin airport/city
-            destination: Destination airport/city
-            start_date: Departure date (YYYY-MM-DD)
-            end_date: Return date (YYYY-MM-DD)
-            num_travelers: Number of adult travelers
-
-        Returns:
-            JSON string with flight search results
+        Call the Booking flights API and return a SMALL, summarized JSON payload,
+        so the LLM doesn't hit token limits.
         """
-        api_key = os.getenv("RAPIDAPI_KEY")
-        if not api_key:
-            return json.dumps({
-                "error": "RAPIDAPI_KEY environment variable is not set. Please add it to your .env file.",
-                "status": "error"
-            }, indent=2)
-
+        # --- 1. Build request ---
         url = "https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights"
+        api_key = os.getenv("RAPIDAPI_KEY")
 
-        querystring = {
+        if not api_key:
+            return json.dumps(
+                {
+                    "status": "error",
+                    "error": "Missing RAPIDAPI_KEY in environment",
+                },
+                separators=(",", ":"),
+            )
+
+        params = {
             "fromId": f"{source}.AIRPORT",
             "toId": f"{destination}.AIRPORT",
             "departDate": start_date,
@@ -66,35 +61,60 @@ class FlightSearchTool(BaseTool):
         }
 
         headers = {
-            "x-rapidapi-key": api_key,
-            "x-rapidapi-host": "booking-com15.p.rapidapi.com"
+            "X-RapidAPI-Key": api_key,
+            "X-RapidAPI-Host": "booking-com15.p.rapidapi.com",
         }
 
         try:
-            response = requests.get(url, headers=headers, params=querystring)
-            response.raise_for_status()  # Raise an exception for bad status codes (4xx or 5xx)
+            response = requests.get(url, headers=headers, params=params, timeout=20)
+            response.raise_for_status()
+            raw = response.json()
 
-            result = response.json()
+            # --- 2. Extract ONLY the cheap summary we care about ---
+            aggregation = raw.get("data", {}).get("aggregation", {})
+            stops = aggregation.get("stops", [])
 
-            # Format the response for better readability
-            return json.dumps(result, indent=2)
+            flights_summary = []
+            for stop_info in stops:
+                flights_summary.append(
+                    {
+                        "numberOfStops": stop_info.get("numberOfStops"),
+                        "minPrice": stop_info.get("minPrice"),
+                        "minPricePerAdult": stop_info.get("minPricePerAdult"),
+                        "cheapestAirline": stop_info.get("cheapestAirline"),
+                    }
+                )
+
+            result = {
+                "status": "success",
+                "message": "Flight search summary (cheapest options by stop-count). Full raw API response omitted to save tokens.",
+                "flights_summary": flights_summary,
+            }
+
+            # IMPORTANT: no pretty indent → fewer tokens
+            return json.dumps(result, separators=(",", ":"))
 
         except requests.exceptions.HTTPError as http_err:
-            return json.dumps({
-                "error": f"HTTP error occurred: {http_err}",
-                "status_code": http_err.response.status_code,
-                "response_text": http_err.response.text,
-                "status": "error"
-            }, indent=2)
-        except requests.exceptions.RequestException as req_err:
-            return json.dumps({
-                "error": f"Failed to search flights: {req_err}",
-                "status": "error"
-            }, indent=2)
-        except json.JSONDecodeError as json_err:
-            return json.dumps({
-                "error": f"Failed to parse API response: {json_err}",
-                "response_text": response.text,
-                "status": "error"
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "error",
+                    "error": "HTTP_403" if response.status_code == 403 else f"HTTP error {response.status_code}",
+                    "details": response.text[:500]
+                },
+                separators=(",", ":"),
+            )
 
+        except requests.exceptions.RequestException as req_err:
+            return json.dumps(
+                {"status": "error", "error": f"Request failed: {req_err}"},
+                separators=(",", ":"),
+            )
+        except json.JSONDecodeError as json_err:
+            return json.dumps(
+                {
+                    "status": "error",
+                    "error": f"Failed to parse API response: {json_err}",
+                    "response_text": response.text,
+                },
+                separators=(",", ":"),
+            )

@@ -142,8 +142,14 @@ final_assembly_task:
     3. If all parts are successful, compile them into the 'FinalItinerary'
        Pydantic model.
     4. Calculate the 'total_cost' (flights + hotel + activities) and the
-       'remaining_budget' (which is the 'final_remaining_budget'
-       from the activity_planning_task).
+       'remaining_budget' using the Budgeting_Agent's calculation:
+       - Use the Budgeting_Agent's JSON output where
+         'total_cost' is the sum of all components and
+         'variance' = (original trip budget - total_cost).
+       - Set FinalItinerary.total_cost = Budgeting_Agent.total_cost.
+       - Set FinalItinerary.remaining_budget = Budgeting_Agent.variance
+         (this may be negative if the trip overspends the budget).
+
   expected_output: >
     A complete travel itinerary formatted as a markdown without '```' that 
     strictly conforms to the 'FinalItinerary' Pydantic model.

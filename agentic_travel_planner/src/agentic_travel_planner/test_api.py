@@ -11,7 +11,7 @@ payload = {
     "end_date": "2026-01-13",
     "trip_duration": 3,
     "num_travelers": 2,
-    "budget": 600,
+    "budget": 1000,
     "interests": "clubs, Water sports, food, forts, Beaches",
     "group_category": "Boys only"
 }

@@ -47,8 +47,4 @@ The agentic-travel-planner Crew is composed of multiple AI agents, each with uni
 
 For support, questions, or feedback regarding the AgenticTravelPlanner Crew or crewAI.
 - Visit our [documentation](https://docs.crewai.com)
-- Reach out to us through our [GitHub repository](https://github.com/joaomdmoura/crewai)
-- [Join our Discord](https://discord.com/invite/X4JWnZnxPb)
-- [Chat with our docs](https://chatg.pt/DWjSBZn)
-
 Let's create wonders together with the power and simplicity of crewAI.

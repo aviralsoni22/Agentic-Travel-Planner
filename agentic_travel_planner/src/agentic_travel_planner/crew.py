@@ -223,35 +223,6 @@ class ActivityItem(BaseModel):
     )
     booking_url: Optional[str] = Field(None, description="Direct link to book or reserve")
     discount_info: Optional[str] = Field(None, description="Any promo/discount details")
-# class ActivityItem(BaseModel):
-#     """A planned activity that matches interests and budget."""
-#     name: str = Field(..., description="Activity or venue name")
-#     description: str = Field(..., description="Short activity description")
-#     category: Optional[str] = Field(
-#         None,
-#         description="e.g. tour, restaurant, museum, show"
-#     )
-#     cost: PositiveFloat = Field(
-#         ..., description="Total cost for the group for this activity"
-#     )
-#     location: str = Field(
-#         ..., description="Where the activity takes place (address/area)"
-#     )
-#     latitude: Optional[float] = Field(
-#         None, ge=-90, le=90, description="Lat if available"
-#     )
-#     longitude: Optional[float] = Field(
-#         None, ge=-180, le=180, description="Lng if available"
-#     )
-#     scheduled_time: Optional[datetime] = Field(
-#         None, description="Planned start datetime (local) if scheduled"
-#     )
-#     estimated_travel_time_minutes: Optional[int] = Field(
-#         None, ge=0, description="Approx travel time from hotel to activity"
-#     )
-#     booking_url: Optional[str] = Field(None, description="Direct link to book or reserve")
-#     discount_info: Optional[str] = Field(None, description="Any promo/discount details")
-
 
 class ActivityPlanningTaskOutput(BaseModel):
     """
@@ -282,23 +253,6 @@ class ActivityPlanningTaskOutput(BaseModel):
         None, description="Remaining budget received from the hotel step"
     )
 
-    # @model_validator(mode='after')
-    # def _budget_consistency(self) -> 'ActivityPlanningTaskOutput':
-    #     prev = self.previous_remaining_budget
-    #     activities = self.activities
-    #     final_remaining = self.final_remaining_budget
-
-    #     # Only validate sum if we have both prev budget and concrete activities list
-    #     if isinstance(activities, list) and prev is not None and final_remaining is not None:
-    #         total_cost = sum(a.cost for a in activities)
-    #         expected = prev - total_cost
-    #         if abs(expected - final_remaining) > 0.5:  # allow small float drift
-    #             raise ValueError(
-    #                 f"final_remaining_budget mismatch: expected {expected:.2f} "
-    #                 f"from prev({prev:.2f}) - total_activity_cost({total_cost:.2f}), "
-    #                 f"got {final_remaining:.2f}"
-    #             )
-    #     return self
     class Config:
         title = "ActivityPlanningTaskOutput"
         json_schema_extra = {
@@ -435,7 +389,11 @@ class FinalItineraryOutput(BaseModel):
     )
     remaining_budget: Optional[float] = Field(
         None,
-        description="Final remaining budget (should match the activity step's final_remaining_budget)"
+        description=(
+            "Final remaining budget from the original total trip budget. "
+            "This MUST equal the Budgeting_Agent's 'variance' field. "
+            "It may be negative if the itinerary overspends the budget."
+        ),
     )
 
     # Traceability (optional but useful for audits)
@@ -443,72 +401,6 @@ class FinalItineraryOutput(BaseModel):
         default_factory=dict,
         description="Optional: IDs/URIs to the JSON outputs from each specialist step"
     )
-
-    # ----------------- Validators & Consistency -----------------
-
-    # @model_validator(mode='after')
-    # def _check_success_vs_failures(self) -> 'FinalItineraryOutput':
-    #     failures = self.failures or []
-    #     flights = self.flights
-    #     hotel = self.hotel
-    #     itinerary_by_day = self.itinerary_by_day
-
-    #     # If there are failures, components may be absent. If there are no failures, components must exist.
-    #     if failures:
-    #         return self
-
-    #     # No failures -> all parts must be present
-    #     missing = []
-    #     if not flights:
-    #         missing.append("flights")
-    #     if not hotel:
-    #         missing.append("hotel")
-    #     if not itinerary_by_day:
-    #         missing.append("itinerary_by_day")
-
-    #     if missing:
-    #         raise ValueError(
-    #             f"No failures reported, but missing assembled components: {', '.join(missing)}"
-    #         )
-    #     return self
-
-    # @model_validator(mode='after')
-    # def _duration_consistency(self) -> 'FinalItineraryOutput':
-    #     start = self.start_date
-    #     end = self.end_date
-    #     dur = self.trip_duration
-    #     if start and end and dur:
-    #         computed = (end - start).days
-    #         if computed != dur:
-    #             raise ValueError(
-    #                 f"trip_duration mismatch: got {dur}, expected {(end - start).days} from dates"
-    #             )
-    #     return self
-
-    # @model_validator(mode='after')
-    # def _cost_consistency(self) -> 'FinalItineraryOutput':
-    #     # Only enforce when we have all parts and no failures
-    #     if self.failures:
-    #         return self
-
-    #     flights: Optional = self.flights
-    #     hotel: Optional = self.hotel
-    #     days: Optional[List] = self.itinerary_by_day
-    #     total_cost: Optional[float] = self.total_cost
-
-    #     if flights and hotel and days is not None and total_cost is not None:
-    #         activity_sum = 0.0
-    #         for d in days:
-    #             for a in d.activities:
-    #                 activity_sum += a.cost
-
-    #         expected_total = flights.total_price + hotel.total_cost + activity_sum
-    #         if abs(expected_total - total_cost) > 0.5:
-    #             raise ValueError(
-    #                 f"total_cost mismatch: expected {expected_total:.2f} "
-    #                 f"(flights+hotel+activities), got {total_cost:.2f}"
-    #             )
-    #     return self
 
     class Config:
         title = "FinalItinerary"
