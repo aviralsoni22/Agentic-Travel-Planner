@@ -15,15 +15,14 @@ i_planning_task:
     - Group Category: {group_category} 
 
     You must break down the {budget} into three (3) allocated budgets:
-    1. 'flight_budget' 
-    2. 'hotel_budget'
-    3. 'activity_budget'
+    1. 'flight_budget' (Priority)
+    2. 'hotel_budget' (Secondary)
+    3. 'activity_budget' (Least Priority)
     
     Be intelligent with your allocation. For a {budget} trip,
     realistically allocate funds for flights, accommodation, and activities.
     For your information, traveller would prefer economy seats for flights.
     You must also pass along all other original request details for the crew.
-    Budget allocation preference: 'flight_budget' <= 'activity_budget' <= 'hotel_budget'.
 
   agent: Budgeting_Agent
   expected_output: >

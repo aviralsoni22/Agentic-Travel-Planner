@@ -142,7 +142,14 @@ class HotelSearchTool(BaseTool):
         # --- Step 1: Get Destination ID ---
         try:
             dest_url = f"https://{RAPID_HOST}/api/v1/hotels/searchDestination"
-            dest_resp = requests.get(dest_url, headers=headers, params={"query": inp.destination})
+            raw_dest = inp.destination or ""
+            base_city = raw_dest.split(",")[0].strip() if raw_dest else raw_dest
+            dest_resp = requests.get(
+                dest_url,
+                headers=headers, 
+                params={"query": base_city},
+                timeout=20
+            )
             dest_resp.raise_for_status()
             dest_data = dest_resp.json()
             
@@ -154,7 +161,10 @@ class HotelSearchTool(BaseTool):
             search_type = dest_list[0].get("search_type", "CITY")
             
         except Exception as e:
-            return json.dumps({"error": f"Destination search failed: {str(e)}"}, indent=2)
+            return json.dumps(
+                {"error": f"Destination search failed for '{base_city}': {str(e)}"},
+                indent=2
+            )
 
         # --- Step 2: Search Hotels ---
         try:
@@ -204,18 +214,36 @@ class HotelSearchTool(BaseTool):
                 if len(valid_hotels) >= 5:
                     break
 
-
             if not valid_hotels:
                 return json.dumps({
-                    "status": "no_results", 
-                    "message": f"No hotels found in {inp.destination} under {inp.updated_remaining_budget} {inp.currency_code}",
+                    "status": "no_results",
+                    "message": (
+                        f"No hotels found in {inp.destination} "
+                        f"under {inp.updated_remaining_budget} {inp.currency_code}"
+                    ),
                     "debug_budget": inp.updated_remaining_budget
                 }, indent=2)
+
+            # --- Compute new remaining budget after choosing a hotel ---
+            # We assume the *cheapest* returned hotel is the one that will be booked.
+            new_remaining_budget = inp.updated_remaining_budget
+
+            if inp.updated_remaining_budget is not None and valid_hotels:
+                try:
+                    # valid_hotels are already filtered/sorted by price_low_to_high,
+                    # but to be safe we explicitly pick the cheapest.
+                    cheapest_hotel = min(valid_hotels, key=lambda h: h["price_total"])
+                    new_remaining_budget = float(inp.updated_remaining_budget) - float(cheapest_hotel["price_total"])
+                    if new_remaining_budget < 0:
+                        new_remaining_budget = 0.0
+                except Exception:
+                    # If anything weird happens, just fall back to the original value
+                    new_remaining_budget = inp.updated_remaining_budget
 
             return json.dumps({
                 "status": "success",
                 "hotels": valid_hotels,
-                "updated_remaining_budget": inp.updated_remaining_budget # Pass it back or modify if needed
+                "updated_remaining_budget": new_remaining_budget
             }, indent=2)
 
         except Exception as e:
