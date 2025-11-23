@@ -84,8 +84,51 @@ class HotelSearchTool(BaseTool):
             "currency": currency,
             "review_score": score,
             "address": self._get_nested(prop, "location", "displayLocation") or "Address unavailable",
-            "url": url
+            "url": url,
         }
+    def _geocode_hotel(self, name: str, address: str, destination: str, api_key: str):
+        """
+        Use Geoapify Geocoding API to get lat/lon for a hotel.
+        Tries: full address → name + destination → destination as last fallback.
+        Returns (lat, lon) or (None, None) if it fails.
+        """
+        # Clean up empty / placeholder address
+        parts = []
+        if name:
+            parts.append(name)
+        if address and address != "Address unavailable":
+            parts.append(address)
+        if destination:
+            parts.append(destination)
+
+        query_text = ", ".join(parts) if parts else destination
+
+        if not query_text:
+            return None, None
+
+        url = "https://api.geoapify.com/v1/geocode/search"
+        params = {
+            "text": query_text,
+            "limit": 1,
+            "apiKey": api_key,
+        }
+
+        try:
+            resp = requests.get(url, params=params, timeout=20)
+            resp.raise_for_status()
+            data = resp.json()
+            features = data.get("features") or []
+            if not features:
+                return None, None
+
+            coords = features[0].get("geometry", {}).get("coordinates", [None, None])
+            lon, lat = coords[0], coords[1]
+            if lon is None or lat is None:
+                return None, None
+            return lat, lon
+        except Exception as e:
+            print(f"[HotelSearchTool] Geocoding failed for '{query_text}': {e}")
+            return None, None
 
     def _run(self, **kwargs) -> str:
         inp = HotelSearchToolInput(**kwargs)
@@ -95,7 +138,7 @@ class HotelSearchTool(BaseTool):
             return json.dumps({"error": "Missing RAPIDAPI_KEY"}, indent=2)
 
         headers = {**DEFAULT_HEADERS, "X-RapidAPI-Key": api_key}
-
+        geoapify_key = os.getenv("GEOAPIFY_KEY") or os.getenv("GEOAPIFY_API_KEY")
         # --- Step 1: Get Destination ID ---
         try:
             dest_url = f"https://{RAPID_HOST}/api/v1/hotels/searchDestination"
@@ -136,17 +179,31 @@ class HotelSearchTool(BaseTool):
             valid_hotels = []
             for raw_item in raw_list:
                 clean_hotel = self._extract_hotel_data(raw_item, inp.currency_code)
-                
+    
                 if clean_hotel:
+                    # 🔹 NEW: geocode hotel to get coordinates
+                    if geoapify_key:
+                        lat, lon = self._geocode_hotel(
+                            name=clean_hotel["name"],
+                            address=clean_hotel["address"],
+                            destination=inp.destination,
+                            api_key=geoapify_key,
+                        )
+                    else:
+                        lat, lon = None, None
+                    clean_hotel["latitude"] = lat
+                    clean_hotel["longitude"] = lon
+
                     # Apply Budget Filter
                     if inp.updated_remaining_budget:
-                        if clean_hotel['price_total'] > float(inp.updated_remaining_budget):
-                            continue # Skip expensive hotels
-                    
+                        if clean_hotel["price_total"] > float(inp.updated_remaining_budget):
+                            continue  # Skip expensive hotels
+
                     valid_hotels.append(clean_hotel)
-                    
+
                 if len(valid_hotels) >= 5:
                     break
+
 
             if not valid_hotels:
                 return json.dumps({
@@ -163,3 +220,24 @@ class HotelSearchTool(BaseTool):
 
         except Exception as e:
             return json.dumps({"error": f"Hotel search failed: {str(e)}"}, indent=2)
+
+#uncomment the code below to test the tool
+#run "python hotel_search_tool.py" in the terminal
+# if __name__ == "__main__":
+#     print("Using Tool: search_hotels")
+
+#     tool = HotelSearchTool()
+
+#     test_input = {
+#         "destination": "Panaji, Goa, India",
+#         "start_date": "2026-01-10", #change this to your desired date
+#         "end_date": "2026-01-13", #change this to your desired date
+#         "num_travelers": 2,
+#         "group_category": "Boys only",
+#         "interests": "clubs, water sports, food, forts, beach",
+#         "updated_remaining_budget": 600,
+#         "currency_code": "USD"
+#     }
+
+#     result = tool.run(**test_input)
+#     print(result)

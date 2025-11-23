@@ -130,8 +130,10 @@ class HotelOffer(BaseModel):
     """Details about a found hotel/resort/villa option for the entire stay."""
     name: str = Field(..., description="Property name")
     address: str = Field(..., description="Full address or area")
-    check_in: str = Field(..., description="Check-in datetime ISO string")
-    check_out: str = Field(..., description="Check-out datetime ISO string")
+    latitude: float = Field(None, description="Latitude of the property if available")
+    longitude: float = Field(None, description="Longitude of the property if available")
+    check_in: str = Field(..., description="Check-in datetime ISO string, in local time")
+    check_out: str = Field(..., description="Check-out datetime ISO string, in local time")
     nightly_rate: PositiveFloat = Field(..., description="Nightly rate (single currency)")
     total_cost: PositiveFloat = Field(..., description="Total cost for the full stay and guest count")
     rating: Optional[float] = Field(None, ge=0.0, le=5.0, description="Average user rating (0–5)")

@@ -292,6 +292,7 @@ class ActivitySearchTool(BaseTool):
             )
 
 #If you want to test this tool, uncomment the following lines
+#run "python activity_search_tool.py" in the terminal
 
 # if __name__ == "__main__":
 #     tool = ActivitySearchTool()
