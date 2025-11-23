@@ -19,7 +19,7 @@ def run():
         'end_date': '2026-01-13',
         'trip_duration': int('3'), #number of nights (if duration = 3 then its 3 nights/ 4 days)
         'num_travelers': int('2'),
-        'budget': int('600'),
+        'budget': 1500,
         'interests': "clubs, Water sports, food, forts, Beaches",
         'group_category': 'Boys only',
     }
