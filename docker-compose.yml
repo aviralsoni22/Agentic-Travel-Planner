@@ -1,0 +1,176 @@
+# # # version: '3.8'
+
+# # # services:
+# # #   # 1. Redis (Database)
+# # #   redis:
+# # #     image: redis:alpine
+# # #     container_name: travel_redis
+# # #     ports:
+# # #       - "6379:6379"
+
+# # #   # 2. The API (FastAPI)
+# # #   api:
+# # #     # UPDATED: Points to the renamed folder
+# # #     build: ./agentic_travel_planner             
+# # #     container_name: travel_api
+# # #     command: uvicorn agentic_travel_planner.app:app --host 0.0.0.0 --port 8000 --reload
+# # #     ports:
+# # #       - "8000:8000"
+# # #     environment:
+# # #       - REDIS_URL=redis://travel_redis:6379/0
+# # #       - PYTHONPATH=/app/src
+# # #       - OPENAI_API_KEY=${OPENAI_API_KEY}
+# # #       - GEOAPIFY_API_KEY=${GEOAPIFY_API_KEY}
+# # #       - RAPIDAPI_KEY=${RAPIDAPI_KEY}
+# # #     env_file:
+# # #       # UPDATED: Loads .env from the renamed folder
+# # #       - ./agentic_travel_planner/.env           
+# # #     depends_on:
+# # #       - redis
+# # #     volumes:
+# # #       # UPDATED: Maps the renamed folder to /app inside Docker
+# # #       - ./agentic_travel_planner:/app           
+
+# # #   # 3. The Worker (Celery)
+# # #   worker:
+# # #     # UPDATED: Points to the renamed folder
+# # #     build: ./agentic_travel_planner             
+# # #     container_name: travel_worker
+# # #     command: celery -A agentic_travel_planner.worker.celery_app worker --loglevel=info
+# # #     environment:
+# # #       - REDIS_URL=redis://travel_redis:6379/0
+# # #       - PYTHONPATH=/app/src
+# # #       - OPENAI_API_KEY=${OPENAI_API_KEY}
+# # #       - GEOAPIFY_API_KEY=${GEOAPIFY_API_KEY}
+# # #       - RAPIDAPI_KEY=${RAPIDAPI_KEY}
+# # #     env_file:
+# # #       # UPDATED: Loads .env from the renamed folder
+# # #       - ./agentic_travel_planner/.env
+# # #     depends_on:
+# # #       - redis
+# # #     volumes:
+# # #       # UPDATED: Maps the renamed folder to /app inside Docker
+# # #       - ./agentic_travel_planner:/app
+
+# # version: '3.8'
+
+# # services:
+# #   redis:
+# #     image: redis:alpine
+# #     container_name: travel_redis
+# #     ports:
+# #       - "6379:6379"
+
+# #   api:
+# #     build: ./agentic_travel_planner
+# #     container_name: travel_api
+# #     command: uvicorn agentic_travel_planner.app:app --host 0.0.0.0 --port 8000 --reload
+# #     ports:
+# #       - "8000:8000"
+# #     environment:
+# #       - REDIS_URL=redis://travel_redis:6379/0
+# #       - PYTHONPATH=/app/src
+# #       # WE REMOVED THE API KEYS HERE because 'env_file' below handles them!
+# #     env_file:
+# #       - ./agentic_travel_planner/.env
+# #     depends_on:
+# #       - redis
+# #     volumes:
+# #       - ./agentic_travel_planner:/app
+
+# #   worker:
+# #     build: ./agentic_travel_planner
+# #     container_name: travel_worker
+# #     command: celery -A agentic_travel_planner.worker.celery_app worker --loglevel=info
+# #     environment:
+# #       - REDIS_URL=redis://travel_redis:6379/0
+# #       - PYTHONPATH=/app/src
+# #     env_file:
+# #       - ./agentic_travel_planner/.env
+# #     depends_on:
+# #       - redis
+# #     volumes:
+# #       - ./agentic_travel_planner:/app
+# version: '3.8'
+
+# services:
+#   redis:
+#     image: redis:alpine
+#     container_name: travel_redis
+#     ports:
+#       - "6379:6379"
+
+#   api:
+#     build: ./agentic_travel_planner
+#     container_name: travel_api
+#     # FIX 1: Use full path /app/.venv/bin/uvicorn
+#     command: /app/.venv/bin/uvicorn agentic_travel_planner.app:app --host 0.0.0.0 --port 8000 --reload
+#     ports:
+#       - "8000:8000"
+#     environment:
+#       - REDIS_URL=redis://travel_redis:6379/0
+#       - PYTHONPATH=/app/src
+#     env_file:
+#       - ./agentic_travel_planner/.env
+#     depends_on:
+#       - redis
+#     volumes:
+#       - ./agentic_travel_planner:/app
+
+#   worker:
+#     build: ./agentic_travel_planner
+#     container_name: travel_worker
+#     # FIX 2: Use full path /app/.venv/bin/celery
+#     command: /app/.venv/bin/celery -A agentic_travel_planner.worker.celery_app worker --loglevel=info
+#     environment:
+#       - REDIS_URL=redis://travel_redis:6379/0
+#       - PYTHONPATH=/app/src
+#     env_file:
+#       - ./agentic_travel_planner/.env
+#     depends_on:
+#       - redis
+#     volumes:
+#       - ./agentic_travel_planner:/app
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    container_name: travel_redis
+    ports:
+      - "6379:6379"
+
+  api:
+    build: ./agentic_travel_planner
+    container_name: travel_api
+    # Reverted to simple command (The PATH variable in Dockerfile handles the rest)
+    command: uvicorn agentic_travel_planner.app:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://travel_redis:6379/0
+      - PYTHONPATH=/app/src
+    env_file:
+      - ./agentic_travel_planner/.env
+    depends_on:
+      - redis
+    volumes:
+      - ./agentic_travel_planner:/app
+      - /app/.venv   # <--- THIS IS THE MAGIC FIX (Preserves the installed libraries)
+
+  worker:
+    build: ./agentic_travel_planner
+    container_name: travel_worker
+    # Reverted to simple command
+    command: celery -A agentic_travel_planner.worker.celery_app worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://travel_redis:6379/0
+      - PYTHONPATH=/app/src
+    env_file:
+      - ./agentic_travel_planner/.env
+    depends_on:
+      - redis
+    volumes:
+      - ./agentic_travel_planner:/app
+      - /app/.venv   # <--- THIS IS THE MAGIC FIX
