@@ -9,11 +9,12 @@ payload = {
     "destination": "Panaji, Goa, India",
     "start_date": "2026-01-10",
     "end_date": "2026-01-13",
-    "trip_duration": 3,
+    #"trip_duration": 3,
     "num_travelers": 2,
     "budget": 1000,
     "interests": "clubs, Water sports, food, forts, Beaches",
-    "group_category": "Boys only"
+    "group_category": "Boys only",
+    "currency": 'USD'
 }
 
 try:

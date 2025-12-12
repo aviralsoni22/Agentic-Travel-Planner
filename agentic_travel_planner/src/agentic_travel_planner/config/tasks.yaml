@@ -8,72 +8,117 @@ i_planning_task:
     - Destination: {destination}
     - Start Date: {start_date}
     - End Date: {end_date}
-    - Duration: {trip_duration} days
     - Travelers: {num_travelers}
-    - Total Budget: {budget} USD
+    - Total Budget: {budget}
     - Interests: {interests}
     - Group Category: {group_category} 
+    - Currency: {currency}
 
-    You must break down the {budget} into three (3) allocated budgets:
+    You will ask the budgeting agent to break down the {budget} into three (3) allocated budgets:
     1. 'flight_budget' (Priority)
     2. 'hotel_budget' (Secondary)
     3. 'activity_budget' (Least Priority)
+    and get back the allocated budgets.
     
-    Be intelligent with your allocation. For a {budget} trip,
-    realistically allocate funds for flights, accommodation, and activities.
-    For your information, traveller would prefer economy seats for flights.
-    You must also pass along all other original request details for the crew.
+    You must also pass this along with all other original request details for the crew.
 
   agent: Budgeting_Agent
   expected_output: >
     A JSON object string containing the initial plan. This JSON MUST include:
-    'destination', 'start_date', 'end_date', 'trip_duration', 'num_travelers', 'group_category',
+    'destination', 'start_date', 'end_date', 'num_travelers', 'group_category', 
     'interests', 'budget', 'allocated_flight_budget',
-    'allocated_hotel_budget', and 'allocated_activity_budget'.
+    'allocated_hotel_budget', 'currency' and 'allocated_activity_budget'.
   context: []
   output_file: output/initialplan.json
 
 flight_research_task:
   description: >
-    Find the most cost-effective flights. You MUST adhere to the
+    Find the most optimal flights. You MUST adhere to the
     'allocated_flight_budget' provided by your manager in the initial plan.
+    
+    **Budget Rule:** 1. Your target is the 'allocated_flight_budget'.
+    2. However, if the best available flight exceeds this allocation, you are authorized to use the TOTAL TRIP BUDGET ({budget}) to secure the flight, PROVIDED that you leave at least 40% of the total budget remaining for hotels and activities.
+    3. Do NOT fail the task just because the allocation is too low. If a valid flight exists within the Total Budget, book it!
+    
     You must look flights between the {start_date} and {end_date}. You are not allowed to search fights out of the given travel dates.
-   
 
     Search Criteria:
     - From: {source}'s airport IATA code
     - To: {destination}'s airport IATA code
-    - Departure: on or after {start_date} from {source} to {destination}
-    - Return: before or on {end_date} from {destination} to {source}
+    - Departure: STRICLY on {start_date} from {source} to {destination}
+    - Return: STRICLY on {end_date} from {destination} to {source} (when booking return flights)
     - Travelers: {num_travelers}
     - Group Category: {group_category}
+    - Currency: {currency}
 
-    You must use your `FlightSearchTool`. If you find flights, report their
-    details. If no flights are found within budget, you MUST report this
-    failure clearly so the manager can re-plan. If there are discounts available, you must report them.
+    You must use your `FlightSearchTool` two times. First time for outbound flight 
+    and second time for return flight. When searching for return flight remember that
+    source becomes destination and destination becomes source. When searching for flights,
+    you must consider the group category, available discounts and the user's preferences if
+    available. Based on each search result, you must select the optimal flight option and add
+    the details in the output file. If you find flights, report the details of the optimal flight.
+    If no flights are found within budget, you MUST report this failure clearly so the manager can re-plan.
+    If there are discounts available, you must report them.
+  
   agent: Flight_Researcher
   expected_output: >
-    Return a JSON strictly matching FlightResearchTaskOutput:
+    You MUST return a JSON strictly matching `FlightResearchTaskOutput`.
+    A single FlightSummary ALWAYS represents a FULL ROUND-TRIP for all travelers.
+    All four datetime fields MUST be filled if returned by the tool.
+
+    Required structure:
     {
-      "source": "<IATA or city>",
-      "destination": "<IATA or city>",
-      "start_date": "YYYY-MM-DD",
-      "end_date": "YYYY-MM-DD",
-      "num_travelers": <int>,
-      "selected_flight_total": <number>,
-      "currency": "<ISO>",
-      "flights": [/* up to 5 candidates with price+airline+links */],
-      "updated_remaining_budget": <(allocated_flight_budget + allocated_hotel_budget) - selected_flight_total>
+    "source": "<IATA or city>",
+    "destination": "<IATA or city>",
+    "start_date": "YYYY-MM-DD",
+    "end_date": "YYYY-MM-DD",
+    "num_travelers": <int>,
+
+    "flights": [
+      {
+        "outbound_airline": "<string>", //Required
+        "outbound_flight_number": "<string or N/A>", //Required
+        "outbound_departure_time": "<ISO8601 outbound departure>",        // REQUIRED
+        "outbound_arrival_time": "<ISO8601 outbound arrival>",            // REQUIRED
+        "outbound_flight_booking_url": "<optional link>",
+        "discount_info_outbound": "<optional>",
+        "return_airline": "<string>", //Required
+        "return_flight_number": "<string or N/A>", //Required
+        "return_departure_time": "<ISO8601 return departure>",   // REQUIRED
+        "return_arrival_time": "<ISO8601 return arrival>",       // REQUIRED
+        "return_flight_booking_url": "<optional link>",
+        "discount_info_return": "<optional>"
+        "total_price": <number>,                                 // MUST be round-trip price for all travelers
+      }
+    ],
+
+    "selected_flight_total": <same as flights[0].total_price>,
+    "currency": "<ISO>",
+    
+    // CRITICAL: Calculate remainder from the TOTAL budget ({budget}), not the allocated one.
+    "updated_remaining_budget": <{budget} - selected_flight_total>
     }
+
+    Rules:
+    - One FlightSummary = entire round trip.
+    - You MUST extract outbound + return timestamps from the FlightSearchTool results.
+    - Never output null for departure/arrival times if the tool provides them.
+    - total_price MUST include: outbound + return + all travelers.
+    - Do NOT create separate flight entries for outbound and return legs.
+    - Only flights within budget (or within the variance rules allowed above) are allowed.
+
   context:
     - i_planning_task
   output_file: output/flight_research.json
 
 hotel_research_task:
   description: >
-    Find the best-value, highly-rated hotels. You MUST use the
-    'updated_remaining_budget' from the flight task's output to determine
-    your maximum hotel budget. You must look hotel between the {start_date} and {end_date}.
+    Find the best-value, highly-rated hotel options that offer the best balance of safety, 
+    proximity to key attractions and comfort. You MUST use the
+    'updated_remaining_budget' from the flight task's output as your total available budget.
+    (Note: This budget MUST cover both the hotel AND the activities).
+    
+    You must look hotel between the {start_date} and {end_date}.
     
     Search Criteria:
     - City: {destination}
@@ -81,13 +126,12 @@ hotel_research_task:
     - Check-out: {end_date}
     - Guests: {num_travelers}
     - User Interests (for location): {interests}
-    - Group Category: {group_category}
+    - Group Category: {group_category} 
     
-    You must use your `HotelSearchTool`. Cross-reference hotel locations
-    with user interests (e.g., "history", "food"). If no suitable hotels
-    are found within the remaining budget, you MUST report this failure clearly
-    so the manager can re-plan. Hotels should be budget friendly and highly rated for stays.
-    The chosen hotel must provide best value for money to the traveller.
+    You must use your `HotelSearchTool`. Hotels should be budget friendly and highly rated for stays.
+    The chosen hotel must provide best value for money to the traveller. If no suitable hotels
+    are found within the `hotel_budget`, you MUST report this failure clearly than overspending.
+    so the manager can re-plan. 
 
   agent: Hotel_Researcher
   expected_output: >
@@ -95,7 +139,7 @@ hotel_research_task:
     1. 'hotels': A list of hotel details (e.g., name, address, total_cost, booking_url).
        If no hotels are found, this must be an error message from your tool.
     2. 'updated_remaining_budget': A float calculated by
-       (allocated_activity_budget + previous_remaining_budget) - actual_hotel_cost).
+       (previous_remaining_budget - actual_hotel_cost).
   context:
     - flight_research_task
     - i_planning_task
@@ -110,8 +154,6 @@ activity_planning_task:
     - Location: {destination}
     - Interests: {interests}
     - Budget: You MUST use the 'updated_remaining_budget' from the hotel task's output.
-    - Hotel Location: Use the hotel details from the previous step to
-      plan a logical schedule, minimizing travel time.
     - Group Category: {group_category}
 
     You must use your `ActivitySearchTool`. Find tours, restaurants,
@@ -150,11 +192,10 @@ final_assembly_task:
          (this may be negative if the trip overspends the budget).
 
   expected_output: >
-    A complete travel itinerary formatted as a markdown without '```' that 
-    strictly conforms to the 'FinalItinerary' Pydantic model.
+    Return a PURE JSON string (no backticks, no markdown, no prose) that strictly matches FinalItinerary Pydantic model.
   agent: Budgeting_Agent
   context:
     - flight_research_task
     - hotel_research_task
     - activity_planning_task
-  output_file: output/FinalItinerary.md
+  output_file: output/FinalItinerary.json

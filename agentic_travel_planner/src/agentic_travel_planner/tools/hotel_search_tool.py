@@ -26,7 +26,7 @@ class HotelSearchToolInput(BaseModel):
     group_category: str = Field("Family", description="Group type.")
     interests: str = Field("", description="Interests (metadata only).")
     updated_remaining_budget: Optional[float] = Field(None, description="Max total budget for hotel.")
-    currency_code: str = Field("USD", description="Currency code.")
+    currency: str = Field(..., description="Currency.")
 
 class HotelSearchTool(BaseTool):
     name: str = "search_hotels"
@@ -175,7 +175,7 @@ class HotelSearchTool(BaseTool):
                 "arrival_date": inp.start_date,
                 "departure_date": inp.end_date,
                 "adults": str(inp.num_travelers),
-                "currency_code": inp.currency_code,
+                "currency_code": inp.currency,
                 "sort": "price_low_to_high" # Get cheapest first to fit budget
             }
             
@@ -185,10 +185,10 @@ class HotelSearchTool(BaseTool):
             
             # Handle different root structures (data.hotels, or just results)
             raw_list = data.get("data", {}).get("hotels") or data.get("result") or []
-
+            time.sleep(1.1)
             valid_hotels = []
             for raw_item in raw_list:
-                clean_hotel = self._extract_hotel_data(raw_item, inp.currency_code)
+                clean_hotel = self._extract_hotel_data(raw_item, inp.currency)
     
                 if clean_hotel:
                     # 🔹 NEW: geocode hotel to get coordinates
@@ -219,7 +219,7 @@ class HotelSearchTool(BaseTool):
                     "status": "no_results",
                     "message": (
                         f"No hotels found in {inp.destination} "
-                        f"under {inp.updated_remaining_budget} {inp.currency_code}"
+                        f"under {inp.updated_remaining_budget} {inp.currency}"
                     ),
                     "debug_budget": inp.updated_remaining_budget
                 }, indent=2)
@@ -264,7 +264,7 @@ class HotelSearchTool(BaseTool):
 #         "group_category": "Boys only",
 #         "interests": "clubs, water sports, food, forts, beach",
 #         "updated_remaining_budget": 600,
-#         "currency_code": "USD"
+#         "currency": "USD"
 #     }
 
 #     result = tool.run(**test_input)

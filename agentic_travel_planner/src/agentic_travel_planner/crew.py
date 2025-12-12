@@ -29,7 +29,6 @@ def assert_tool_names_safe(agents):
 
 
 class GroupCategory(str, Enum):
-    solo = "solo"
     couple = "couple"
     family = "family"
     girls_only = "Girls only"
@@ -40,10 +39,11 @@ class GroupCategory(str, Enum):
     other = "other"
 
 class InitialPlanningTaskOutput(BaseModel):
+    source: str = Field(..., description="Origin city/region/country for the trip (e.g., home city).")
     destination: str = Field(..., description="Trip destination city/region/country.")
     start_date: date = Field(..., description="Trip start date (YYYY-MM-DD).")
     end_date: date = Field(..., description="Trip end date (YYYY-MM-DD).")
-    trip_duration: PositiveInt = Field(..., description="Trip duration in days.")
+    #trip_duration: PositiveInt = Field(..., description="Trip duration in days.")
     num_travelers: PositiveInt = Field(..., description="Number of travelers in the group.")
     interests: conlist(str, min_length=0) = Field(
         default_factory=list,
@@ -55,16 +55,16 @@ class InitialPlanningTaskOutput(BaseModel):
     allocated_flight_budget: PositiveFloat = Field(..., description="Budget allocated to flights/transport to destination.")
     allocated_hotel_budget: PositiveFloat = Field(..., description="Budget allocated to accommodation.")
     allocated_activity_budget: PositiveFloat = Field(..., description="Budget allocated to activities/experiences.")
-    source: str = Field(..., description="Origin city/region/country for the trip (e.g., home city).")
 
     class Config:
         title = "InitialPlanningTaskOutput"
         json_schema_extra = {
             "example": {
+                "source": "Mumbai, India",
                 "destination": "Bali, Indonesia",
                 "start_date": "2026-01-10",
                 "end_date": "2026-01-17",
-                "trip_duration": 7,
+                #"trip_duration": 7,
                 "num_travelers": 2,
                 "interests": ["beaches", "temples", "food"],
                 "budget": 180000.0,
@@ -72,7 +72,6 @@ class InitialPlanningTaskOutput(BaseModel):
                 "allocated_flight_budget": 72000.0,
                 "allocated_hotel_budget": 75600.0,
                 "allocated_activity_budget": 32400.0,
-                "source": "Mumbai, India"
             }
         }
 
@@ -308,15 +307,19 @@ class ActivityPlanningTaskOutput(BaseModel):
 
 class FlightSummary(BaseModel):
     """Condensed summary of the selected flight solution."""
-    airline: str = Field(..., description="Chosen carrier")
-    flight_number: str = Field(..., description="Booked/selected flight number")
-    departure_time: datetime = Field(..., description="Outbound departure (ISO)")
-    arrival_time: datetime = Field(..., description="Outbound arrival (ISO)")
+    outbound_airline: str = Field(..., description="Chosen carrier")
+    outbound_flight_number: str = Field(..., description="Booked/selected flight number")
+    outbound_departure_time: datetime = Field(..., description="Outbound departure (ISO)")
+    outbound_arrival_time: datetime = Field(..., description="Outbound arrival (ISO)")
+    return_airline: Optional[str] = Field(None, description="Chosen carrier")
+    return_flight_number: Optional[str] = Field(None, description="Booked/selected flight number")
     return_departure_time: Optional[datetime] = Field(None, description="Return leg departure (ISO) if round trip")
     return_arrival_time: Optional[datetime] = Field(None, description="Return leg arrival (ISO) if round trip")
     total_price: PositiveFloat = Field(..., description="Total paid/expected for flights for all travelers")
-    booking_url: Optional[str] = Field(None, description="Deep link used to book, if available")
-    discount_info: Optional[str] = Field(None, description="Promotions applied, if any")
+    outbound_booking_url: Optional[str] = Field(None, description="Deep link used to book, if available")
+    return_booking_url: Optional[str] = Field(None, description="Deep link used to book, if available")
+    outbound_discount_info: Optional[str] = Field(None, description="Promotions applied, if any")
+    return_discount_info: Optional[str] = Field(None, description="Promotions applied, if any")
 
 
 class HotelSummary(BaseModel):
@@ -368,7 +371,7 @@ class FinalItineraryOutput(BaseModel):
     destination: str = Field(..., description="Trip destination city/region")
     start_date: date = Field(..., description="Trip start date")
     end_date: date = Field(..., description="Trip end date")
-    trip_duration: PositiveInt = Field(..., description="Duration in days")
+    #trip_duration: PositiveInt = Field(..., description="Duration in days")
     num_travelers: PositiveInt = Field(..., description="Total number of travelers")
     group_category: str = Field(..., description="Group type label (e.g., couple, family, friends)")
     interests: List[str] = Field(default_factory=list, description="Interests that guided selection")
@@ -411,7 +414,7 @@ class FinalItineraryOutput(BaseModel):
                 "destination": "Kyoto, Japan",
                 "start_date": "2026-01-10",
                 "end_date": "2026-01-17",
-                "trip_duration": 7,
+                #"trip_duration": 7,
                 "num_travelers": 2,
                 "group_category": "couple",
                 "interests": ["temples", "food", "gardens"],
@@ -545,7 +548,7 @@ class AgenticTravelPlanner():
         return Crew(
             agents=agents_wo_manager, # Automatically created by the @agent decorator
             tasks=self.tasks, # Automatically created by the @task decorator
-            process=Process.hierarchical,
+            process=Process.hierarchical, 
             verbose=True,
             manager_agent=manager, # Call the @agent method
         )

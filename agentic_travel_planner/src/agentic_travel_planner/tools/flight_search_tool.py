@@ -17,12 +17,11 @@ class FlightSearchToolInput(BaseModel):
     end_date: str = Field(..., description="Return date of the flight in YYYY-MM-DD format (e.g., '2025-12-15').")
     num_travelers: int = Field(default=1, description="Number of travelers.")
 
-
 class FlightSearchTool(BaseTool):
     name: str = "search_flights"
     description: str = (
-        "Search for round-trip flights between two locations with specified dates and number of travelers. "
-        "Returns flight options with prices, airlines, and booking details from the booking.com API."
+        "Search for flights between given locations with specified dates and number of travelers."
+        "Returns flight data from the booking.com API."
     )
     args_schema: Type[BaseModel] = FlightSearchToolInput
 
@@ -57,7 +56,7 @@ class FlightSearchTool(BaseTool):
             "departDate": start_date,
             "returnDate": end_date,
             "adults": str(num_travelers),
-            "currency_code": "USD"
+            "currency": "USD"
         }
 
         headers = {

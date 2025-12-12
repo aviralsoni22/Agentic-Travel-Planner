@@ -16,11 +16,12 @@ class TravelPlanRequest(BaseModel):
     destination: str = Field(..., description="Trip destination city/region/country")
     start_date: str = Field(..., description="Trip start date (YYYY-MM-DD)")
     end_date: str = Field(..., description="Trip end date (YYYY-MM-DD)")
-    trip_duration: int = Field(..., description="Trip duration in days")
+    # trip_duration: int = Field(..., description="Trip duration in days")
     num_travelers: int = Field(..., description="Number of travelers")
     budget: int = Field(..., description="Total budget for the trip")
     interests: str = Field(..., description="Comma-separated list of interests")
     group_category: str = Field(..., description="Group type (e.g., solo, couple, family, friends)")
+    currency: str = Field(..., description="Currency for the trip")
 
 @app.post("/plan")
 def generate_plan(request: TravelPlanRequest):
