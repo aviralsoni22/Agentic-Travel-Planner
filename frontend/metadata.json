@@ -1,0 +1,5 @@
+{
+  "name": "Booking.ai Agentic Planner",
+  "description": "An AI-powered travel agent dashboard displaying generated itineraries, budget breakdowns, and reasoning traces with a Booking.com-inspired UI.",
+  "requestFramePermissions": []
+}
