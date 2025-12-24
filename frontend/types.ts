@@ -22,7 +22,7 @@ export interface Hotel {
   address: string;
   rating: number;
   price_per_night: number;
-  total_price: number;
+  total_cost: number;
   check_in: string;
   check_out: string;
   image_url: string;
