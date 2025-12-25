@@ -53,6 +53,7 @@ export interface Trace {
 }
 
 export interface TripPlan {
+  source: string;
   destination: string;
   start_date: string;
   end_date: string;

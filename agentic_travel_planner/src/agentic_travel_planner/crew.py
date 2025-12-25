@@ -368,6 +368,7 @@ class FinalItineraryOutput(BaseModel):
     """
 
     # Context
+    source: str = Field(..., description="Origin city/region from the initial request")
     destination: str = Field(..., description="Trip destination city/region")
     start_date: date = Field(..., description="Trip start date")
     end_date: date = Field(..., description="Trip end date")

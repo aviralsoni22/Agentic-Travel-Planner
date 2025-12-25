@@ -18,7 +18,7 @@ const App: React.FC = () => {
   const handleCancelPlanning = () => {
     setView('home');
   };
-  
+
   const handleSubmitPlan = async (requestData: TripRequest) => {
     setView('loading');
 
@@ -26,21 +26,21 @@ const App: React.FC = () => {
       // 1. Get the raw response from the backend
       // We cast to 'any' because the wrapper structure differs from TripPlan
       const response: any = await generateItinerary(requestData);
-      
+
       console.log("Full API Response:", response); // Helpful for debugging
 
       // 2. CHECK & UNWRAP: Is the data inside a 'plan' property?
       if (response && response.plan) {
-          setData(response.plan); // ✅ Correct: Extract the inner plan
+        setData(response.plan); // ✅ Correct: Extract the inner plan
       } else {
-          setData(response); // Fallback
+        setData(response); // Fallback
       }
 
       setView('dashboard');
     } catch (error) {
       console.error("Planning failed:", error);
       alert("Failed to generate plan. Please try again.");
-      setView('form'); 
+      setView('form');
     }
   };
 

@@ -16,8 +16,8 @@ export const TripPulse: React.FC<TripPulseProps> = ({ data }) => {
   const interests = data.interests || [];
 
   const steps = [
-    { label: 'Flights', status: data.flights ? 'success' : 'pending', detail: 'Booked' },
-    { label: 'Hotel', status: data.hotel ? 'success' : 'failed', detail: data.hotel ? 'Reserved' : 'Unavailable' },
+    { label: 'Flights', status: data.flights ? 'success' : 'pending', detail: 'Found' },
+    { label: 'Hotel', status: data.hotel ? 'success' : 'failed', detail: data.hotel ? 'Found' : 'Unavailable' },
     { 
       label: 'Itinerary', 
       status: itinerary.length > 0 ? 'success' : 'pending', 
@@ -37,7 +37,7 @@ export const TripPulse: React.FC<TripPulseProps> = ({ data }) => {
                     <Sparkles className="text-booking-yellow" size={20} />
                     Trip Pulse
                 </h2>
-                <p className="text-gray-400 text-sm mt-1">Live status of your agentic planning session</p>
+                <p className="text-gray-400 text-sm mt-1">Status of your agentic planning session</p>
             </div>
             
             <div className="relative z-10 text-right">

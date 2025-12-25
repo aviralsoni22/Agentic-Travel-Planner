@@ -24,7 +24,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ data }) => {
                         type="Outbound"
                         flight={data.flights}
                         numTravelers={data.num_travelers}
-                        from={data.source.split(',')[0]}
+                        from={(data.source || 'Origin').split(',')[0]}
                         to={data.destination.split(',')[0]}
                         departTime={data.flights.departure_time}
                         arriveTime={data.flights.arrival_time}
@@ -36,7 +36,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ data }) => {
                         flight={data.flights}
                         numTravelers={data.num_travelers}
                         from={data.destination.split(',')[0]}
-                        to={data.source.split(',')[0]}
+                        to={(data.source || 'Origin').split(',')[0]}
                         departTime={data.flights.return_departure_time}
                         arriveTime={data.flights.return_arrival_time}
                     />

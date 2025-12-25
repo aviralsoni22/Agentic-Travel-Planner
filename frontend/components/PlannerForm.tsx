@@ -175,10 +175,7 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({ onCancel, onSubmit }) 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block ml-1">Start</label>
-                                    <div
-                                        className="relative group cursor-pointer"
-                                        onClick={() => showPicker(startDateRef)}
-                                    >
+                                    <div className="relative group">
                                         <div className="absolute left-4 top-3.5 pointer-events-none z-10">
                                             <Calendar size={18} className="text-gray-400 group-focus-within:text-booking-blue transition-colors" />
                                         </div>
@@ -190,8 +187,7 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({ onCancel, onSubmit }) 
                                             value={formData.startDate}
                                             onChange={handleChange}
                                             required
-                                            onClick={() => showPicker(startDateRef)}
-                                            className="w-full bg-gray-50 text-gray-900 pl-12 pr-10 p-3.5 rounded-xl font-semibold border border-gray-200 focus:bg-white focus:border-booking-blue focus:ring-4 focus:ring-blue-50/50 outline-none transition-all relative cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full"
+                                            className="w-full bg-gray-50 text-gray-900 pl-12 pr-10 p-3.5 rounded-xl font-semibold border border-gray-200 focus:bg-white focus:border-booking-blue focus:ring-4 focus:ring-blue-50/50 outline-none transition-all relative cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                                         />
                                         <div className="absolute right-4 top-3.5 pointer-events-none z-10">
                                             <ChevronDown size={18} className="text-gray-400 group-focus-within:text-booking-blue transition-colors" />
@@ -200,10 +196,7 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({ onCancel, onSubmit }) 
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block ml-1">End</label>
-                                    <div
-                                        className="relative group cursor-pointer"
-                                        onClick={() => showPicker(endDateRef)}
-                                    >
+                                    <div className="relative group">
                                         <div className="absolute left-4 top-3.5 pointer-events-none z-10">
                                             <Calendar size={18} className="text-gray-400 group-focus-within:text-booking-blue transition-colors" />
                                         </div>
@@ -215,8 +208,7 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({ onCancel, onSubmit }) 
                                             value={formData.endDate}
                                             onChange={handleChange}
                                             required
-                                            onClick={() => showPicker(endDateRef)}
-                                            className="w-full bg-gray-50 text-gray-900 pl-12 pr-10 p-3.5 rounded-xl font-semibold border border-gray-200 focus:bg-white focus:border-booking-blue focus:ring-4 focus:ring-blue-50/50 outline-none transition-all relative cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full"
+                                            className="w-full bg-gray-50 text-gray-900 pl-12 pr-10 p-3.5 rounded-xl font-semibold border border-gray-200 focus:bg-white focus:border-booking-blue focus:ring-4 focus:ring-blue-50/50 outline-none transition-all relative cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                                         />
                                         <div className="absolute right-4 top-3.5 pointer-events-none z-10">
                                             <ChevronDown size={18} className="text-gray-400 group-focus-within:text-booking-blue transition-colors" />
