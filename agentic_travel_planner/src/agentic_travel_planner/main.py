@@ -14,13 +14,12 @@ def run():
     """
     inputs = {
         'source': 'New Delhi, India',
-        'destination': 'Panaji, Goa, India',
+        'destination': 'Mumbai, Maharashtra, India',
         'start_date': '2026-03-10',
         'end_date': '2026-03-13',
-        #'trip_duration': int('3'), #number of nights (if duration = 3 then its 3 nights/ 4 days)
         'num_travelers': int('2'),
         'budget': 1500,
-        'interests': "clubs, Water sports, food, forts, Beaches",
+        'interests': "clubs, food, forts, Beaches",
         'group_category': 'Boys only',
         'currency': 'USD'
     }

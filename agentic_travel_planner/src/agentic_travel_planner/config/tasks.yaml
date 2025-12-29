@@ -51,9 +51,30 @@ flight_research_task:
     - Group Category: {group_category}
     - Currency: {currency}
 
-    You must use your `FlightSearchTool` two times. First time for outbound flight 
-    and second time for return flight. When searching for return flight remember that
-    source becomes destination and destination becomes source. When searching for flights,
+    You must use your `FlightSearchTool` **TWO SEPARATE TIMES** to build the round trip:
+    **Note:** The tool ignores the end date parameter.
+    **Reminder:** The tool accepts only IATA codes for source and destination. 
+
+    1. **Outbound Leg**:
+       - Source: {source}
+       - Destination: {destination}
+       - Start Date: {start_date}
+       - End Date: (Ignore this parameter or pass {end_date}, the tool ignores it anyway)
+       
+    2. **Return Leg**:
+       - Source: {destination} (Swap source/dest)
+       - Destination: {source}
+       - Start Date: {end_date} (Use the trip END date as the start date for this flight)
+       - End Date: (Ignore)
+
+    **Strategy**:
+    - Select the best option from Search #1 (Outbound). PREFER flights departing EARLY MORNING (e.g. 05:00 - 11:00) to maximize daytime.
+    - Select the best option from Search #2 (Return). PREFER flights departing LATE NIGHT (e.g. after 20:00) to utilize the last day.
+    - **Total Price** = Price of Outbound + Price of Return.
+    - Check if (Total Price) <= allocated_flight_budget (or total budget rules).
+    - Combine these two legs into the single `FlightSummary` output.
+
+    When searching for flights,
     you must consider the group category, available discounts and the user's preferences if
     available. Based on each search result, you must select the optimal flight option and add
     the details in the output file. If you find flights, report the details of the optimal flight.
@@ -68,8 +89,8 @@ flight_research_task:
 
     Required structure:
     {
-    "source": "<IATA or city>",
-    "destination": "<IATA or city>",
+    "source": "<IATA Code>",
+    "destination": "<IATA Code>",
     "start_date": "YYYY-MM-DD",
     "end_date": "YYYY-MM-DD",
     "num_travelers": <int>,
@@ -80,15 +101,19 @@ flight_research_task:
         "outbound_flight_number": "<string or N/A>", //Required
         "outbound_departure_time": "<ISO8601 outbound departure>",        // REQUIRED
         "outbound_arrival_time": "<ISO8601 outbound arrival>",            // REQUIRED
-        "outbound_flight_booking_url": "<optional link>",
-        "discount_info_outbound": "<optional>",
+        "outbound_price": <number>,                                      // REQUIRED (Total for all travelers)
+        "outbound_booking_url": "<optional link>",
+        "outbound_discount_info": "<optional>",
+        
         "return_airline": "<string>", //Required
         "return_flight_number": "<string or N/A>", //Required
         "return_departure_time": "<ISO8601 return departure>",   // REQUIRED
         "return_arrival_time": "<ISO8601 return arrival>",       // REQUIRED
-        "return_flight_booking_url": "<optional link>",
-        "discount_info_return": "<optional>"
-        "total_price": <number>,                                 // MUST be round-trip price for all travelers
+        "return_price": <number>,                                // REQUIRED (Total for all travelers)
+        "return_booking_url": "<optional link>",
+        "return_discount_info": "<optional>"
+
+        "total_price": <number>,                                 // MUST be (outbound_price + return_price)
       }
     ],
 
@@ -102,6 +127,8 @@ flight_research_task:
     Rules:
     - One FlightSummary = entire round trip.
     - You MUST extract outbound + return timestamps from the FlightSearchTool results.
+    - If the tool provides `flight_number_guess`, USE IT for `flight_number`.
+    - If no flight number is found, output "Unknown". DO NOT FAIL.
     - Never output null for departure/arrival times if the tool provides them.
     - total_price MUST include: outbound + return + all travelers.
     - Do NOT create separate flight entries for outbound and return legs.

@@ -14,7 +14,7 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({ onCancel, onSubmit }) 
         startDate: '',
         endDate: '',
         budget: 0,
-        duration: 1,
+        // duration removed
         groupType: 'Couple',
         travelers: 1,
         interests: ''
@@ -25,41 +25,23 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({ onCancel, onSubmit }) 
 
     // Helper to trigger date picker
     const showPicker = (ref: React.RefObject<HTMLInputElement>) => {
+        if (!ref.current) return;
+
         try {
-            if (ref.current && 'showPicker' in ref.current) {
+            // Modern browsers
+            if ('showPicker' in ref.current) {
+                // This might fail if no user gesture, but click should be enough.
+                // If it fails, we fall back to focus.
                 (ref.current as any).showPicker();
             } else {
-                ref.current?.focus();
+                ref.current.focus();
             }
         } catch (e) {
-            console.error("Error opening picker:", e);
-            // Fallback to focus if showPicker fails (e.g., transient user activation issues)
+            // Check if it's a browser restriction (NotAllowedError) and fail gracefully to focus()
+            // We suppress the strict console error to avoid noise since we have a fallback.
             ref.current?.focus();
         }
     };
-
-    // Helper to parse "YYYY-MM-DD" as local date at midnight to avoid timezone shifts
-    const parseLocalDate = (dateStr: string): Date | null => {
-        if (!dateStr) return null;
-        const [y, m, d] = dateStr.split('-').map(Number);
-        return new Date(y, m - 1, d);
-    };
-
-    // Effect to calculate duration when dates change
-    useEffect(() => {
-        const start = parseLocalDate(formData.startDate);
-        const end = parseLocalDate(formData.endDate);
-
-        if (start && end) {
-            const diffTime = end.getTime() - start.getTime();
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            // Only update if duration is different and valid
-            if (diffDays >= 0 && diffDays !== formData.duration) {
-                setFormData(prev => ({ ...prev, duration: diffDays }));
-            }
-        }
-    }, [formData.startDate, formData.endDate]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;

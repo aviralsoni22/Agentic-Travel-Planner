@@ -6,6 +6,7 @@ from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
 from pydantic import BaseModel, Field, PositiveFloat, PositiveInt, root_validator, validator, conlist, model_validator
 from agentic_travel_planner.tools import FlightSearchTool, ActivitySearchTool, HotelSearchTool
+from crewai_tools import SerperDevTool
 from datetime import date, datetime
 from typing import List, Optional, Union, Literal, Dict
 
@@ -79,16 +80,33 @@ class InitialPlanningTaskOutput(BaseModel):
 
 
 class FlightOffer(BaseModel):
-    """Details about a found flight option."""
-    airline: str = Field(..., description="Airline name/carrier")
-    flight_number: str = Field(..., description="Flight number")
-    departure_time: str = Field(..., description="Departure datetime ISO string")
-    arrival_time: str = Field(..., description="Arrival datetime ISO string")
-    price: PositiveFloat = Field(..., description="Total price for the travelers")
-    booking_url: Optional[str] = Field(None, description="URL to book this flight")
-    discount_info: Optional[str] = Field(
-        None, description="Details about any discounts found"
-    )
+    """Details about a found flight option (Round Trip)."""
+    # Outbound Leg
+    outbound_airline: str = Field("Unknown", description="Airline for outbound leg")
+    outbound_flight_number: str = Field("Unknown", description="Flight number for outbound leg")
+    outbound_departure_time: str = Field(..., description="Departure datetime ISO string (Outbound)")
+    outbound_arrival_time: str = Field(..., description="Arrival datetime ISO string (Outbound)")
+    outbound_departure_timezone: Optional[str] = Field(None, description="Timezone for outbound departure")
+    outbound_arrival_timezone: Optional[str] = Field(None, description="Timezone for outbound arrival")
+    outbound_price: PositiveFloat = Field(..., description="Price for outbound leg (Total for all travelers)")
+
+    # Return Leg
+    return_airline: str = Field("Unknown", description="Airline for return leg")
+    return_flight_number: str = Field("Unknown", description="Flight number for return leg")
+    return_departure_time: str = Field(..., description="Departure datetime ISO string (Return)")
+    return_arrival_time: str = Field(..., description="Arrival datetime ISO string (Return)")
+    return_departure_timezone: Optional[str] = Field(None, description="Timezone for return departure")
+    return_arrival_timezone: Optional[str] = Field(None, description="Timezone for return arrival")
+    return_price: PositiveFloat = Field(..., description="Price for return leg (Total for all travelers)")
+
+    # Totals/Extras
+    total_price: PositiveFloat = Field(..., description="Total price (outbound + return)")
+    
+    outbound_booking_url: Optional[str] = Field(None, description="URL to book outbound flight")
+    outbound_discount_info: Optional[str] = Field(None, description="Details about any discounts found for outbound")
+    
+    return_booking_url: Optional[str] = Field(None, description="URL to book return flight")
+    return_discount_info: Optional[str] = Field(None, description="Details about any discounts found for return")
     
 
 
@@ -136,6 +154,7 @@ class HotelOffer(BaseModel):
     nightly_rate: PositiveFloat = Field(..., description="Nightly rate (single currency)")
     total_cost: PositiveFloat = Field(..., description="Total cost for the full stay and guest count")
     rating: Optional[float] = Field(None, ge=0.0, le=5.0, description="Average user rating (0–5)")
+    image_url: Optional[str] = Field(None, description="URL of a representative image")
     reviews_count: Optional[int] = Field(None, ge=0, description="Number of reviews")
     distance_to_interest_km: Optional[float] = Field(
         None, ge=0.0, description="Approx distance to key interest area in km"
@@ -301,25 +320,29 @@ class ActivityPlanningTaskOutput(BaseModel):
         }
 
 
-
-
-# ---------- Building blocks (summaries carried from specialist outputs) ----------
-
 class FlightSummary(BaseModel):
     """Condensed summary of the selected flight solution."""
-    outbound_airline: str = Field(..., description="Chosen carrier")
-    outbound_flight_number: str = Field(..., description="Booked/selected flight number")
+    outbound_airline: str = Field("Unknown", description="Chosen carrier")
+    outbound_flight_number: str = Field("Unknown", description="Booked/selected flight number")
     outbound_departure_time: datetime = Field(..., description="Outbound departure (ISO)")
     outbound_arrival_time: datetime = Field(..., description="Outbound arrival (ISO)")
-    return_airline: Optional[str] = Field(None, description="Chosen carrier")
-    return_flight_number: Optional[str] = Field(None, description="Booked/selected flight number")
-    return_departure_time: Optional[datetime] = Field(None, description="Return leg departure (ISO) if round trip")
-    return_arrival_time: Optional[datetime] = Field(None, description="Return leg arrival (ISO) if round trip")
-    total_price: PositiveFloat = Field(..., description="Total paid/expected for flights for all travelers")
+    outbound_departure_timezone: Optional[str] = Field(None, description="Timezone for outbound departure")
+    outbound_arrival_timezone: Optional[str] = Field(None, description="Timezone for outbound arrival")
+    outbound_price: PositiveFloat = Field(..., description="Price for outbound leg")
     outbound_booking_url: Optional[str] = Field(None, description="Deep link used to book, if available")
-    return_booking_url: Optional[str] = Field(None, description="Deep link used to book, if available")
     outbound_discount_info: Optional[str] = Field(None, description="Promotions applied, if any")
+    
+    return_airline: str = Field("Unknown", description="Chosen carrier")
+    return_flight_number: str = Field("Unknown", description="Booked/selected flight number")
+    return_departure_time: datetime = Field(..., description="Return leg departure (ISO) if round trip")
+    return_arrival_time: datetime = Field(..., description="Return leg arrival (ISO) if round trip")
+    return_departure_timezone: Optional[str] = Field(None, description="Timezone for return departure")
+    return_arrival_timezone: Optional[str] = Field(None, description="Timezone for return arrival")
+    return_price: PositiveFloat = Field(..., description="Price for return leg")
+    return_booking_url: Optional[str] = Field(None, description="Deep link used to book, if available")
     return_discount_info: Optional[str] = Field(None, description="Promotions applied, if any")
+    
+    total_price: PositiveFloat = Field(..., description="Total paid/expected for flights for all travelers")
 
 
 class HotelSummary(BaseModel):
@@ -331,6 +354,9 @@ class HotelSummary(BaseModel):
     total_cost: PositiveFloat = Field(..., description="Total accommodation cost for the entire stay")
     booking_url: Optional[str] = Field(None, description="Booking link")
     discount_info: Optional[str] = Field(None, description="Promo code or deal if any")
+    rating: Optional[float] = Field(None, description="Average user rating (0-10)")
+    image_url: Optional[str] = Field(None, description="URL of a representative image")
+    nightly_rate: Optional[float] = Field(None, description="Cost per night")
 
 
 class ActivitySummary(BaseModel):
@@ -368,10 +394,10 @@ class FinalItineraryOutput(BaseModel):
     """
 
     # Context
+    source: str = Field(..., description="Trip source city/region")
     destination: str = Field(..., description="Trip destination city/region")
     start_date: date = Field(..., description="Trip start date")
     end_date: date = Field(..., description="Trip end date")
-    #trip_duration: PositiveInt = Field(..., description="Duration in days")
     num_travelers: PositiveInt = Field(..., description="Total number of travelers")
     group_category: str = Field(..., description="Group type label (e.g., couple, family, friends)")
     interests: List[str] = Field(default_factory=list, description="Interests that guided selection")
@@ -404,13 +430,14 @@ class FinalItineraryOutput(BaseModel):
     # Traceability (optional but useful for audits)
     trace: Optional[dict[str,str]] = Field(
         default_factory=dict,
-        description="Optional: IDs/URIs to the JSON outputs from each specialist step"
+        description="Optional: Trace info. Expected keys: flight_component, hotel_component, activity_component, budgeting"
     )
 
     class Config:
         title = "FinalItinerary"
         json_schema_extra = {
             "example": {
+                "source": "New Delhi, India",
                 "destination": "Kyoto, Japan",
                 "start_date": "2026-01-10",
                 "end_date": "2026-01-17",
@@ -465,7 +492,7 @@ class AgenticTravelPlanner():
     @agent
     def Flight_Researcher(self) -> Agent:
         return Agent(
-            config=self.agents_config['Flight_Researcher'], # type: ignore[index]
+            config=self.agents_config['Flight_Researcher'], 
             tools=[FlightSearchTool()],
             verbose=True
         )
@@ -473,7 +500,7 @@ class AgenticTravelPlanner():
     @agent
     def Hotel_Researcher(self) -> Agent:
         return Agent(
-            config=self.agents_config['Hotel_Researcher'], # type: ignore[index]
+            config=self.agents_config['Hotel_Researcher'], 
             tools=[HotelSearchTool()],
             verbose=True
         )
@@ -481,40 +508,37 @@ class AgenticTravelPlanner():
     @agent
     def Activity_Booker(self) -> Agent:
         return Agent(
-            config=self.agents_config['Activity_Booker'], # type: ignore[index]
-            tools=[ActivitySearchTool()],
+            config=self.agents_config['Activity_Booker'], 
+            tools=[ActivitySearchTool(), SerperDevTool()],
             verbose=True
         )
 
     @agent
     def Budgeting_Agent(self) -> Agent:
         return Agent(
-            config=self.agents_config['Budgeting_Agent'], # type: ignore[index]
+            config=self.agents_config['Budgeting_Agent'], 
             verbose=True
         )
     
     @agent
     def Manager_and_Itinerary_Planner(self) -> Agent:
         return Agent(
-            config=self.agents_config['Manager_and_Itinerary_Planner'], # type: ignore[index]
+            config=self.agents_config['Manager_and_Itinerary_Planner'],
             allow_delegation=True,
             verbose=True
         )
 
-    # To learn more about structured task outputs,
-    # task dependencies, and task callbacks, check out the documentation:
-    # https://docs.crewai.com/concepts/tasks#overview-of-a-task
     @task
     def i_planning_task(self) -> Task:
         return Task(
-            config=self.tasks_config['i_planning_task'], # type: ignore[index]
+            config=self.tasks_config['i_planning_task'], 
             output_pydantic=InitialPlanningTaskOutput,
         )
 
     @task
     def flight_research_task(self) -> Task:
         return Task(
-            config=self.tasks_config['flight_research_task'], # type: ignore[index]
+            config=self.tasks_config['flight_research_task'],   
             output_pydantic=FlightResearchTaskOutput
 
         )
@@ -522,14 +546,14 @@ class AgenticTravelPlanner():
     @task
     def hotel_research_task(self) -> Task:
         return Task(
-            config=self.tasks_config['hotel_research_task'], # type: ignore[index]
+            config=self.tasks_config['hotel_research_task'], 
             output_pydantic=HotelResearchTaskOutput,
         )
 
     @task
     def activity_planning_task(self) -> Task:
         return Task(
-            config=self.tasks_config['activity_planning_task'], # type: ignore[index]
+            config=self.tasks_config['activity_planning_task'], 
             output_pydantic = ActivityPlanningTaskOutput
         )
 
@@ -546,9 +570,9 @@ class AgenticTravelPlanner():
         manager = self.Manager_and_Itinerary_Planner()
         agents_wo_manager = [a for a in self.agents if a.id != manager.id]
         return Crew(
-            agents=agents_wo_manager, # Automatically created by the @agent decorator
-            tasks=self.tasks, # Automatically created by the @task decorator
+            agents=agents_wo_manager, 
+            tasks=self.tasks, 
             process=Process.hierarchical, 
-            verbose=True,
-            manager_agent=manager, # Call the @agent method
+            verbose=False,
+            manager_agent=manager, 
         )
