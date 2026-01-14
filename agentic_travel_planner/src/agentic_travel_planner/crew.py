@@ -82,8 +82,8 @@ class InitialPlanningTaskOutput(BaseModel):
 class FlightOffer(BaseModel):
     """Details about a found flight option (Round Trip)."""
     # Outbound Leg
-    outbound_airline: str = Field("Unknown", description="Airline for outbound leg")
-    outbound_flight_number: str = Field("Unknown", description="Flight number for outbound leg")
+    outbound_airline: Union[str, None] = Field("Unknown", description="Airline for outbound leg")
+    outbound_flight_number: Union[str, int, None] = Field("Unknown", description="Flight number for outbound leg")
     outbound_departure_time: str = Field(..., description="Departure datetime ISO string (Outbound)")
     outbound_arrival_time: str = Field(..., description="Arrival datetime ISO string (Outbound)")
     outbound_departure_timezone: Optional[str] = Field(None, description="Timezone for outbound departure")
@@ -91,8 +91,8 @@ class FlightOffer(BaseModel):
     outbound_price: PositiveFloat = Field(..., description="Price for outbound leg (Total for all travelers)")
 
     # Return Leg
-    return_airline: str = Field("Unknown", description="Airline for return leg")
-    return_flight_number: str = Field("Unknown", description="Flight number for return leg")
+    return_airline: Union[str, None] = Field("Unknown", description="Airline for return leg")
+    return_flight_number: Union[str, int, None] = Field("Unknown", description="Flight number for return leg")
     return_departure_time: str = Field(..., description="Departure datetime ISO string (Return)")
     return_arrival_time: str = Field(..., description="Arrival datetime ISO string (Return)")
     return_departure_timezone: Optional[str] = Field(None, description="Timezone for return departure")
@@ -109,8 +109,6 @@ class FlightOffer(BaseModel):
     return_discount_info: Optional[str] = Field(None, description="Details about any discounts found for return")
     
 
-
-
 class FlightResearchTaskOutput(BaseModel):
     """
     Output of the flight research task.
@@ -124,8 +122,8 @@ class FlightResearchTaskOutput(BaseModel):
     end_date: date = Field(..., description="Return date")
     num_travelers: PositiveInt = Field(..., description="Number of travelers")
 
-    flights: Union[List[FlightOffer], str] = Field(
-      ..., description="List of flight options or error message if no flights found"
+    flights: List[FlightOffer] = Field(
+      ..., description="List of flight options."
     )
     updated_remaining_budget: Optional[float] = Field(..., description="Remaining budget = budget - actual_flight_cost")
 
@@ -138,7 +136,21 @@ class FlightResearchTaskOutput(BaseModel):
                 "start_date": "2026-01-10",
                 "end_date": "2026-01-17",
                 "num_travelers": 2,
-                "flights": "6E 333, DHK056, CEB362",
+                "flights": [
+                    {
+                        "outbound_airline": "IndiGo",
+                        "outbound_flight_number": "6E 123",
+                        "outbound_departure_time": "2026-01-10T08:00:00",
+                        "outbound_arrival_time": "2026-01-10T14:00:00",
+                        "outbound_price": 500.0,
+                        "return_airline": "IndiGo",
+                        "return_flight_number": "6E 456",
+                        "return_departure_time": "2026-01-17T10:00:00",
+                        "return_arrival_time": "2026-01-17T16:00:00",
+                        "return_price": 450.0,
+                        "total_price": 950.0
+                    }
+                ],
                 "updated_remaining_budget": 108000.0
             }
         }
@@ -322,8 +334,8 @@ class ActivityPlanningTaskOutput(BaseModel):
 
 class FlightSummary(BaseModel):
     """Condensed summary of the selected flight solution."""
-    outbound_airline: str = Field("Unknown", description="Chosen carrier")
-    outbound_flight_number: str = Field("Unknown", description="Booked/selected flight number")
+    outbound_airline: Union[str, None] = Field("Unknown", description="Chosen carrier")
+    outbound_flight_number: Union[str, int, None] = Field("Unknown", description="Booked/selected flight number")
     outbound_departure_time: datetime = Field(..., description="Outbound departure (ISO)")
     outbound_arrival_time: datetime = Field(..., description="Outbound arrival (ISO)")
     outbound_departure_timezone: Optional[str] = Field(None, description="Timezone for outbound departure")
@@ -332,8 +344,8 @@ class FlightSummary(BaseModel):
     outbound_booking_url: Optional[str] = Field(None, description="Deep link used to book, if available")
     outbound_discount_info: Optional[str] = Field(None, description="Promotions applied, if any")
     
-    return_airline: str = Field("Unknown", description="Chosen carrier")
-    return_flight_number: str = Field("Unknown", description="Booked/selected flight number")
+    return_airline: Union[str, None] = Field("Unknown", description="Chosen carrier")
+    return_flight_number: Union[str, int, None] = Field("Unknown", description="Booked/selected flight number")
     return_departure_time: datetime = Field(..., description="Return leg departure (ISO) if round trip")
     return_arrival_time: datetime = Field(..., description="Return leg arrival (ISO) if round trip")
     return_departure_timezone: Optional[str] = Field(None, description="Timezone for return departure")

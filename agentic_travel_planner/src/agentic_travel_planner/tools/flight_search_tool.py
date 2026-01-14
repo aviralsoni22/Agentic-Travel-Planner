@@ -112,7 +112,8 @@ class FlightSearchTool(BaseTool):
                             airline_name = carrier_code if carrier_code else "Unknown Airline"
 
                         if not flight_number:
-                            flight_number = extract_flight_number(str(leg))
+                            #flight_number = extract_flight_number(str(leg))
+                            flight_number = "N/A"
 
                         flight_str = f"{airline_name} {carrier_code} {flight_number}"
                         flight_details.append(flight_str)
@@ -143,7 +144,7 @@ class FlightSearchTool(BaseTool):
 
 # --- TEST EXECUTION ---
 # Modify the input parameters as needed
-#if __name__ == "__main__":
- #   tool = FlightSearchTool()
-    # Test with the input you provided logic for
-    #print(tool._run(source="MAA", destination="JAI", start_date="2026-03-10", num_travelers=1))
+# if __name__ == "__main__":
+#    tool = FlightSearchTool()
+#    # Test with the input you provided logic for
+#    print(tool._run(source="DEL", destination="BOM", start_date="2026-03-10", num_travelers=1))

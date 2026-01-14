@@ -9,9 +9,7 @@ WORKDIR /app
 # 4. Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# --- FIX IS HERE ---
 # 5. Install dependencies ONLY (Ignore the project source code for now)
-# We added '--no-install-project' to stop it from looking for 'src/'
 RUN uv sync --frozen --no-dev --no-install-project
 
 # 6. Add the virtual environment to the PATH

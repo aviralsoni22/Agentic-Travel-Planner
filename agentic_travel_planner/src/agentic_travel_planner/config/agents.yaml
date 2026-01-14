@@ -13,7 +13,7 @@ Manager_and_Itinerary_Planner:
     You are responsible for the final, synthesized deliverable.
   verbose: true
   allow_delegation: true
-  llm: gpt-4.1
+  llm: gpt-4o
 
 Flight_Researcher:
   role: Resourceful Flight Researcher
@@ -35,7 +35,7 @@ Flight_Researcher:
     return a *realistic price range* for that route, not a '0'. When looking for flights, you must consider the group category, available discounts and the user's preferences if available.
   verbose: true
   allow_delegation: false # Worker agents do not delegate
-  llm: gpt-4.1-mini
+  llm: gpt-4o-mini
 
 Hotel_Researcher:
   role: Value-Driven Hotel Specialist
@@ -54,7 +54,7 @@ Hotel_Researcher:
     You must return a single, best-choice JSON object.
   verbose: true
   allow_delegation: false # Worker agents do not delegate
-  llm: gpt-4.1-mini
+  llm: gpt-4o-mini
 
 Activity_Booker:
   role: Local History and Food Expert
@@ -71,7 +71,7 @@ Activity_Booker:
 
   verbose: true
   allow_delegation: false # Worker agents do not delegate
-  llm: gpt-4.1-mini
+  llm: gpt-4o-mini
 
 Budgeting_Agent:
   role: Chief Financial Officer
@@ -87,4 +87,4 @@ Budgeting_Agent:
     {'budget_ok': true/false, 'total_cost': X, 'budget_provided': Y, 'variance': Z}
   verbose: true
   allow_delegation: false # Worker agents do not delegate
-  llm: gpt-4.1-mini
+  llm: gpt-4o-mini

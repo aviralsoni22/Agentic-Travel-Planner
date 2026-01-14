@@ -80,6 +80,13 @@ flight_research_task:
     the details in the output file. If you find flights, report the details of the optimal flight.
     If no flights are found within budget, you MUST report this failure clearly so the manager can re-plan.
     If there are discounts available, you must report them.
+
+    **CRITICAL DATA PARSING INSTRUCTIONS**:
+    - The `FlightSearchTool` returns prices as strings like "150.00 USD" or "200 EUR".
+    - You MUST extract the numeric value (e.g., 150.00) for the `price` fields in the JSON output.
+    - You MUST extract the currency code (e.g., "USD") for the `currency` field.
+    - If the tool returns "Unknown" or null for any field (like flight number), use "Unknown" in your output. DO NOT FAIL the task.
+    - Ensure `flight_number` is never empty. If missing, set it to "Unknown".
   
   agent: Flight_Researcher
   expected_output: >
@@ -101,7 +108,7 @@ flight_research_task:
         "outbound_flight_number": "<string or N/A>", //Required
         "outbound_departure_time": "<ISO8601 outbound departure>",        // REQUIRED
         "outbound_arrival_time": "<ISO8601 outbound arrival>",            // REQUIRED
-        "outbound_price": <number>,                                      // REQUIRED (Total for all travelers)
+        "outbound_price": <number>,                                      // REQUIRED (FLOAT ONLY, no currency string)
         "outbound_booking_url": "<optional link>",
         "outbound_discount_info": "<optional>",
         
@@ -109,7 +116,7 @@ flight_research_task:
         "return_flight_number": "<string or N/A>", //Required
         "return_departure_time": "<ISO8601 return departure>",   // REQUIRED
         "return_arrival_time": "<ISO8601 return arrival>",       // REQUIRED
-        "return_price": <number>,                                // REQUIRED (Total for all travelers)
+        "return_price": <number>,                                // REQUIRED (FLOAT ONLY, no currency string)
         "return_booking_url": "<optional link>",
         "return_discount_info": "<optional>"
 
