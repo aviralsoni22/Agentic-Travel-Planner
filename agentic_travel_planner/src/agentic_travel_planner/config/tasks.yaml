@@ -120,7 +120,7 @@ flight_research_task:
         "return_booking_url": "<optional link>",
         "return_discount_info": "<optional>"
 
-        "total_price": <number>,                                 // MUST be (outbound_price + return_price)
+        "total_price": <number>,                                 // STRICTLY FOLLOW THIS FORMULA: total_price = (outbound_price + return_price)
       }
     ],
 

@@ -73,6 +73,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, tripDat
           4. Keep the tone professional yet friendly, like a high-end travel concierge.
           5. Do not hallucinate data that isn't there, but you can infer from the destination.
           6. Format your response with simple line breaks or bullet points if needed.
+          7. The currency used is USD. 
           `;
 
       const chat = initializeGeminiChat(import.meta.env.VITE_GEMINI_API_KEY || '', systemInstruction);

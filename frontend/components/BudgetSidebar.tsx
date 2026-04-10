@@ -16,13 +16,17 @@ export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }
     return acc + day.activities.reduce((sum, act) => sum + act.cost, 0);
   }, 0);
 
+  const derivedTotalCost = flightsCost + hotelCost + activitiesCost;
+  const originalBudget = (data.total_cost || 0) + (data.remaining_budget || 0);
+  const derivedRemainingBudget = originalBudget - derivedTotalCost;
+
   const chartData = [
     { name: 'Flights', value: flightsCost, color: '#003b95' },
     { name: 'Hotel', value: hotelCost, color: '#006ce4' },
     { name: 'Activities', value: activitiesCost, color: '#febb02' },
   ].filter(d => d.value > 0);
 
-  const isOverBudget = data.remaining_budget < 0;
+  const isOverBudget = derivedRemainingBudget < 0;
 
   return (
     <div className="space-y-6 sticky top-8">
@@ -39,7 +43,7 @@ export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }
             </span>
           </div>
           <div className="text-5xl font-extrabold mb-1 tracking-tight">
-            {data.remaining_budget < 0 ? '-' : '+'}{formatCurrency(Math.abs(data.remaining_budget)).replace('USD', '').trim()}
+            {derivedRemainingBudget < 0 ? '-' : '+'}{formatCurrency(Math.abs(derivedRemainingBudget)).replace('USD', '').trim()}
           </div>
           <div className="text-sm opacity-90 font-medium ml-1">Remaining funds available</div>
         </div>
@@ -78,7 +82,7 @@ export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }
           {/* Center Total */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-1">Total</span>
-            <span className="text-gray-900 text-2xl font-extrabold tracking-tight">{formatCurrency(data.total_cost).replace('.00', '')}</span>
+            <span className="text-gray-900 text-2xl font-extrabold tracking-tight">{formatCurrency(flightsCost + hotelCost + activitiesCost).replace('.00', '')}</span>
           </div>
         </div>
 
