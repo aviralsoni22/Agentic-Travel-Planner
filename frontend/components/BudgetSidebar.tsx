@@ -10,7 +10,7 @@ interface BudgetSidebarProps {
 }
 
 export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }) => {
-  const flightsCost = data.flights?.total_price || 0;
+  const flightsCost = (data.flights?.total_price || 0) / (data.num_travelers || 1);
   const hotelCost = data.hotel?.total_cost || 0;
   const activitiesCost = (data.itinerary_by_day || []).reduce((acc, day) => {
     return acc + day.activities.reduce((sum, act) => sum + act.cost, 0);
