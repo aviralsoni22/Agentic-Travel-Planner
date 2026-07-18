@@ -47,18 +47,35 @@ export const formatTime = (timeStr: string | null): string => {
   return `${h12}:${minutes} ${ampm}`;
 };
 
+// Extract a clean "GMT+5:30" / "GMT+1" / "GMT-4" / "GMT" from an ISO time's own offset.
 export const formatTimezone = (timeStr: string): string => {
   if (!timeStr) return '';
+  const match = timeStr.match(/([+-])(\d{2}):?(\d{2})(?!.*\d)|Z/);
+  if (!match) return '';
+  if (match[0] === 'Z') return 'GMT';
+  const [, sign, hh, mm] = match;
+  const hours = parseInt(hh, 10);
+  const mins = parseInt(mm, 10);
+  return `GMT${sign}${hours}${mins ? ':' + String(mins).padStart(2, '0') : ''}`;
+};
 
-  // Regex to look for +HH:MM or -HH:MM or Z at the end or late part of string
-  // Matches: +05:30, -04:00, +0530, Z
-  const match = timeStr.match(/([+-]\d{2}:?\d{2}|Z)/);
+// Timezone label as a GMT offset. Prefer the offset in the ISO string; otherwise compute it
+// from an IANA name (e.g. "Asia/Kolkata") via Intl so it's correct regardless of viewer tz.
+export const formatGmt = (tzName: string | undefined, isoTime: string): string => {
+  const fromOffset = formatTimezone(isoTime);
+  if (fromOffset) return fromOffset;
 
-  if (match) {
-    const tz = match[1];
-    if (tz === 'Z') return 'GMT';
-    return `GMT${tz}`;
+  if (tzName && isoTime) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: tzName,
+        timeZoneName: 'shortOffset',
+      }).formatToParts(new Date(isoTime));
+      const gmt = parts.find(p => p.type === 'timeZoneName')?.value;
+      if (gmt) return gmt.replace('UTC', 'GMT'); // some engines emit "UTC+5:30"
+    } catch {
+      /* tzName isn't a valid IANA zone (e.g. "IST") — fall through */
+    }
   }
-
-  return '';
+  return tzName || 'Local';
 };

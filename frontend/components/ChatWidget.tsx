@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Send, Sparkles, Bot, User, Loader2 } from 'lucide-react';
-import { Chat } from "@google/genai";
 import { TripPlan } from '../types';
-import { initializeGeminiChat } from '../services/gemini';
+import { sendChatMessage } from '../services/gemini';
 
 interface ChatWidgetProps {
   isOpen: boolean;
@@ -46,7 +45,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, tripDat
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [chatSession, setChatSession] = useState<Chat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -57,67 +55,21 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ isOpen, onClose, tripDat
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    if (isOpen && !chatSession) {
-      // Initialize Gemini Client via Service
-      const systemInstruction = `You are a helpful and enthusiastic travel assistant for Booking.ai.
-          You are currently assisting a user with their trip to ${tripData.destination}.
-          
-          Here is the full trip context in JSON format:
-          ${JSON.stringify(tripData)}
-
-          Rules:
-          1. Be concise and helpful.
-          2. Use the provided JSON data to answer questions about budget, flights, hotels, and activities.
-          3. If the user asks for recommendations not in the JSON, provide general suggestions for ${tripData.destination}.
-          4. Keep the tone professional yet friendly, like a high-end travel concierge.
-          5. Do not hallucinate data that isn't there, but you can infer from the destination.
-          6. Format your response with simple line breaks or bullet points if needed.
-          7. The currency used is USD. 
-          `;
-
-      const chat = initializeGeminiChat(import.meta.env.VITE_GEMINI_API_KEY || '', systemInstruction);
-      setChatSession(chat);
-    }
-  }, [isOpen, tripData, chatSession]);
-
   const handleSend = async () => {
-    if (!input.trim() || !chatSession) return;
+    if (!input.trim() || isLoading) return;
 
     const userMessage = input;
+    const history = messages;  // prior turns, before appending this one
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setIsLoading(true);
 
     try {
-      const result = await chatSession.sendMessageStream({ message: userMessage });
-
-      let fullResponse = "";
-      let isFirstChunk = true;
-
-      for await (const chunk of result) {
-        const text = chunk.text;
-        if (text) {
-          fullResponse += text;
-
-          if (isFirstChunk) {
-            // First chunk received: stop "thinking" and add the message bubble
-            setIsLoading(false);
-            setMessages(prev => [...prev, { role: 'model', text: fullResponse }]);
-            isFirstChunk = false;
-          } else {
-            // Subsequent chunks: update the existing bubble
-            setMessages(prev => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1].text = fullResponse;
-              return newMessages;
-            });
-          }
-        }
-      }
+      // Chat is proxied through the backend (/api/chat); the Gemini key stays server-side.
+      const reply = await sendChatMessage(userMessage, history, tripData);
+      setMessages(prev => [...prev, { role: 'model', text: reply }]);
     } catch (error) {
       console.error("Chat error:", error);
-      setIsLoading(false);
       setMessages(prev => [
         ...prev,
         { role: 'model', text: "I'm sorry, I'm having trouble connecting right now. Please try again." }

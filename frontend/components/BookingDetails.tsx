@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { TripPlan, FlightSummary } from '../types';
 import { Plane, MapPin, Calendar, ExternalLink, AlertTriangle, ArrowRight, Clock } from 'lucide-react';
-import { formatCurrency, formatTime, formatDate, formatTimezone } from '../utils/format';
+import { formatCurrency, formatTime, formatDate, formatGmt } from '../utils/format';
 
 interface BookingDetailsProps {
     data: TripPlan;
@@ -62,6 +62,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ data }) => {
                         arriveTime={data.flights.return_arrival_time}
                         departTimezone={data.flights.return_departure_timezone}
                         arriveTimezone={data.flights.return_arrival_timezone}
+                        stops={data.flights.return_stops}
                         price={data.flights.return_price}
                     />
                 </div>
@@ -201,9 +202,9 @@ const FlightCard: React.FC<FlightCardProps> = ({ type, flight, numTravelers, fro
     const dDate = formatDate(departTime || '');
     const aDate = formatDate(arriveTime || '');
 
-    // Resolve timezones: Use explicit prop, otherwise search string, otherwise default to 'Local'
-    const dTz = departTimezone ?? formatTimezone(departTime || '') ?? 'Local';
-    const aTz = arriveTimezone ?? formatTimezone(arriveTime || '') ?? 'Local';
+    // Timezones as GMT +/- offsets (from the ISO offset, or computed from the IANA name)
+    const dTz = formatGmt(departTimezone, departTime || '');
+    const aTz = formatGmt(arriveTimezone, arriveTime || '');
 
     // Split for styling (HH:MM and AM/PM)
     const [dClock, dAmpm] = dTime.split(' ');
