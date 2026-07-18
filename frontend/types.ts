@@ -14,6 +14,7 @@ export interface FlightSummary {
   outbound_discount_info: string | null;
   outbound_departure_timezone?: string;
   outbound_arrival_timezone?: string;
+  outbound_stops?: number | null;
 
   return_airline: string;
   return_flight_number: string;
@@ -24,6 +25,7 @@ export interface FlightSummary {
   return_discount_info: string | null;
   return_departure_timezone?: string;
   return_arrival_timezone?: string;
+  return_stops?: number | null;
 
   total_price: number;
 }
@@ -68,6 +70,7 @@ export interface Trace {
 }
 
 export interface TripPlan {
+  source: string;
   destination: string;
   start_date: string;
   end_date: string;

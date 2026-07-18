@@ -115,7 +115,7 @@ The system runs as a 3-tier architecture:
 ### Prerequisites
 
 * **System**: Python 3.10+, Node.js 18+, Docker Desktop
-* **API Keys**: OpenAI, RapidAPI (Booking.com), Geoapify
+* **API Keys**: Groq (free — console.groq.com), RapidAPI (Booking.com), Geoapify
 
 ### Installation
 
@@ -132,12 +132,14 @@ Create a `.env` file in the `agentic_travel_planner` directory (backend) and add
 
 ```bash
 # agentic_travel_planner/.env
-MODEL=gpt-4o
-OPENAI_API_KEY=sk-...
-CREWAI_TRACING_ENABLED=true
+GROQ_API_KEY=gsk_...            # free key from https://console.groq.com
 RAPIDAPI_KEY=...
 GEOAPIFY_KEY=...
-REDIS_URL=redis://redis:6379/0  # Note: Host is 'redis' inside Docker
+SERPER_API_KEY=...
+REDIS_URL=redis://travel_redis:6379/0  # compose service name; honored by worker.py
+# Optional model overrides (defaults shown):
+# GROQ_WORKER_MODEL=llama-3.3-70b-versatile
+# GROQ_REASONING_MODEL=openai/gpt-oss-120b
 ```
 
 Create a `.env.local` file in the `frontend` directory and add your key:

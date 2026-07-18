@@ -43,6 +43,7 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ data }) => {
                         arriveTime={data.flights.outbound_arrival_time}
                         departTimezone={data.flights.outbound_departure_timezone}
                         arriveTimezone={data.flights.outbound_arrival_timezone}
+                        stops={data.flights.outbound_stops}
                         price={data.flights.outbound_price}
                     />
 
@@ -110,7 +111,10 @@ export const BookingDetails: React.FC<BookingDetailsProps> = ({ data }) => {
                                 </div>
                                 <div className="text-right">
                                     <div className="text-3xl font-bold text-booking-blue">{formatCurrency(data.hotel.total_cost)}</div>
-                                    <div className="text-xs text-gray-500 font-medium">{tripDuration} nights total</div>
+                                    <div className="text-xs text-gray-500 font-medium">total for {tripDuration} {tripDuration === 1 ? 'night' : 'nights'}</div>
+                                    {data.hotel.nightly_rate != null && tripDuration > 0 && (
+                                        <div className="text-xs text-gray-400 mt-0.5">{formatCurrency(data.hotel.nightly_rate)} <span className="text-gray-400">/ night</span></div>
+                                    )}
                                 </div>
                             </div>
 
@@ -182,10 +186,13 @@ interface FlightCardProps {
     arriveTime: string | null;
     departTimezone?: string;
     arriveTimezone?: string;
+    stops?: number | null;
     price: number;
 }
 
-const FlightCard: React.FC<FlightCardProps> = ({ type, flight, numTravelers, from, to, airline, flightNumber, departTime, arriveTime, departTimezone, arriveTimezone, price }) => {
+const FlightCard: React.FC<FlightCardProps> = ({ type, flight, numTravelers, from, to, airline, flightNumber, departTime, arriveTime, departTimezone, arriveTimezone, stops, price }) => {
+    // stops unknown (null/undefined) -> assume direct; else "Non-stop" / "N stop(s)"
+    const stopLabel = stops == null || stops === 0 ? 'Non-stop' : `${stops} stop${stops > 1 ? 's' : ''}`;
     // Parse times
     const dTime = formatTime(departTime);
     const aTime = formatTime(arriveTime);
@@ -233,7 +240,7 @@ const FlightCard: React.FC<FlightCardProps> = ({ type, flight, numTravelers, fro
                         </div>
 
                         <div className="flex-1 flex flex-col items-center relative px-4">
-                            <div className="text-xs text-gray-400 mb-2 font-medium">Non-stop</div>
+                            <div className="text-xs text-gray-400 mb-2 font-medium">{stopLabel}</div>
                             <div className="w-full h-[2px] bg-gray-200 relative flex items-center justify-between">
                                 <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
                                 <div className="absolute left-1/2 -translate-x-1/2 bg-white px-2">

@@ -1,0 +1,8 @@
+# Host venv is Windows-only; must not overwrite the Linux venv uv builds in the image
+.venv/
+# Secrets are injected at runtime via compose env_file / -e, never baked into the image
+.env
+__pycache__/
+*.pyc
+.git/
+.pytest_cache/

@@ -1,10 +1,10 @@
 import { TripPlan } from './types';
 
 export const MOCK_TRIP_DATA: TripPlan = {
+  source: "New Delhi, India",
   destination: "Panaji, Goa, India",
   start_date: "2026-01-10",
   end_date: "2026-01-13",
-  trip_duration: 3,
   num_travelers: 2,
   group_category: "Boys only",
   interests: ["Clubs", "Water Sports", "Food", "Forts", "Beaches"],
@@ -16,15 +16,21 @@ export const MOCK_TRIP_DATA: TripPlan = {
     }
   ],
   flights: {
-    airline: "IndiGo",
-    flight_number: "6E-123",
-    departure_time: "10:00 AM",
-    arrival_time: "12:30 PM",
-    return_departure_time: "04:00 PM",
-    return_arrival_time: "06:30 PM",
-    total_price: 681.54,
-    booking_url: null,
-    discount_info: null
+    outbound_airline: "IndiGo",
+    outbound_flight_number: "6E-123",
+    outbound_departure_time: "2026-01-10T10:00:00",
+    outbound_arrival_time: "2026-01-10T12:30:00",
+    outbound_price: 340.77,
+    outbound_booking_url: null,
+    outbound_discount_info: null,
+    return_airline: "IndiGo",
+    return_flight_number: "6E-456",
+    return_departure_time: "2026-01-13T16:00:00",
+    return_arrival_time: "2026-01-13T18:30:00",
+    return_price: 340.77,
+    return_booking_url: null,
+    return_discount_info: null,
+    total_price: 681.54
   },
   hotel: null, // As per JSON, hotel failed
   itinerary_by_day: [

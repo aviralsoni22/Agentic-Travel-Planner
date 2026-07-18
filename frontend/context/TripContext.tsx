@@ -61,8 +61,8 @@ export const TripProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         
         // Graceful fallback logic
         const useMock = window.confirm(
-            "Could not connect to the Agentic Backend at http://localhost:8000/plan.\n\n" + 
-            "Make sure your CrewAI server is running.\n\n" + 
+            "Could not reach the planner backend.\n\n" +
+            "Make sure the API service is running (docker compose up).\n\n" +
             "Would you like to generate a demo plan instead?"
         );
 
@@ -73,7 +73,7 @@ export const TripProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 start_date: requestData.startDate,
                 end_date: requestData.endDate,
                 num_travelers: requestData.travelers,
-                trip_duration: requestData.duration,
+                source: requestData.origin || MOCK_TRIP_DATA.source,
                 group_category: requestData.groupType,
                 interests: requestData.interests.split(',').map(i => i.trim()),
             };

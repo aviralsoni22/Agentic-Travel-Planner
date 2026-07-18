@@ -14,6 +14,7 @@ interface PollResponse {
 const USE_MOCK = false;
 
 const MOCK_TRIP_PLAN: TripPlan = {
+  source: "London, UK",
   destination: "Paris, France",
   start_date: "2025-06-15",
   end_date: "2025-06-20",

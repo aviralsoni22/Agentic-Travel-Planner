@@ -37,4 +37,19 @@ services:
       - redis
     volumes:
       - ./agentic_travel_planner:/app
-      - /app/.venv   
+      - /app/.venv
+
+  frontend:
+    image: node:20-alpine
+    container_name: travel_frontend
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host --port 3000"
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_TARGET=http://api:8000  # proxy /api to the api service (compose DNS alias)
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules   # anonymous: keep container's Linux modules, not the host's Windows ones

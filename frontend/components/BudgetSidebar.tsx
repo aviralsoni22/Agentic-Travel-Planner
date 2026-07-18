@@ -10,15 +10,20 @@ interface BudgetSidebarProps {
 }
 
 export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }) => {
-  const flightsCost = (data.flights?.total_price || 0) / (data.num_travelers || 1);
+  // All backend prices are whole-party totals (flights query Booking with adults=num_travelers),
+  // so don't divide any of them by traveler count — that mixed per-person flights with
+  // whole-party hotel/activities and understated the total.
+  const flightsCost = data.flights?.total_price || 0;
   const hotelCost = data.hotel?.total_cost || 0;
   const activitiesCost = (data.itinerary_by_day || []).reduce((acc, day) => {
     return acc + day.activities.reduce((sum, act) => sum + act.cost, 0);
   }, 0);
 
+  // Trust the backend's authoritative (Python-computed) money; derive only as a fallback.
   const derivedTotalCost = flightsCost + hotelCost + activitiesCost;
   const originalBudget = (data.total_cost || 0) + (data.remaining_budget || 0);
-  const derivedRemainingBudget = originalBudget - derivedTotalCost;
+  const totalCost = data.total_cost ?? derivedTotalCost;
+  const remainingBudget = data.remaining_budget ?? (originalBudget - derivedTotalCost);
 
   const chartData = [
     { name: 'Flights', value: flightsCost, color: '#003b95' },
@@ -26,7 +31,7 @@ export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }
     { name: 'Activities', value: activitiesCost, color: '#febb02' },
   ].filter(d => d.value > 0);
 
-  const isOverBudget = derivedRemainingBudget < 0;
+  const isOverBudget = remainingBudget < 0;
 
   return (
     <div className="space-y-6 sticky top-8">
@@ -43,7 +48,7 @@ export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }
             </span>
           </div>
           <div className="text-5xl font-extrabold mb-1 tracking-tight">
-            {derivedRemainingBudget < 0 ? '-' : '+'}{formatCurrency(Math.abs(derivedRemainingBudget)).replace('USD', '').trim()}
+            {remainingBudget < 0 ? '-' : '+'}{formatCurrency(Math.abs(remainingBudget)).replace('USD', '').trim()}
           </div>
           <div className="text-sm opacity-90 font-medium ml-1">Remaining funds available</div>
         </div>
@@ -82,7 +87,7 @@ export const BudgetSidebar: React.FC<BudgetSidebarProps> = ({ data, onOpenChat }
           {/* Center Total */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-1">Total</span>
-            <span className="text-gray-900 text-2xl font-extrabold tracking-tight">{formatCurrency(flightsCost + hotelCost + activitiesCost).replace('.00', '')}</span>
+            <span className="text-gray-900 text-2xl font-extrabold tracking-tight">{formatCurrency(totalCost).replace('.00', '')}</span>
           </div>
         </div>
 
