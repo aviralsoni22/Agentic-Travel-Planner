@@ -39,7 +39,7 @@ export const Footer = () => {
         </div>
         <div className="max-w-7xl mx-auto px-4 md:px-8 mt-10 pt-8 border-t border-blue-800 text-center text-xs opacity-60">
             Copyright © 1996–2025 Booking.ai™. All rights reserved. <br/>
-            This is a concept application demonstrating Agentic AI using CrewAI and Gemini.
+            This is a concept application demonstrating Agentic AI using LangGraph and Gemini.
         </div>
     </footer>
   )

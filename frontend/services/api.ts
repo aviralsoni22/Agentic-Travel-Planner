@@ -1,7 +1,8 @@
 import { TripRequest, TripPlan } from '../types';
 
-// Use the proxy path defined in vite.config.ts
-const API_URL = '/api';
+// Local dev uses the Vite proxy ('/api'); production builds set VITE_API_BASE to the
+// deployed backend URL (e.g. https://travel-planner-api.onrender.com).
+const API_URL = import.meta.env.VITE_API_BASE || '/api';
 
 interface PollResponse {
   status: 'queued' | 'processing' | 'completed' | 'failed';

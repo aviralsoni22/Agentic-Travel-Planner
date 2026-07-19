@@ -1,6 +1,6 @@
 import React from 'react';
 import { TripPlan, Activity } from '../types';
-import { CalendarDays, MapPin, Clock, Lightbulb } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, Lightbulb, Info } from 'lucide-react';
 import { formatDate } from '../utils/format';
 
 interface ItineraryListProps {
@@ -28,6 +28,14 @@ export const ItineraryList: React.FC<ItineraryListProps> = ({ data }) => {
             <CalendarDays className="text-booking-yellow" size={24} />
         </div>
         <h2 className="text-2xl font-bold text-gray-900">Daily Itinerary</h2>
+      </div>
+
+      <div className="flex items-start gap-2.5 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-900">
+        <Info size={16} className="text-booking-blue shrink-0 mt-0.5" />
+        <p>
+          Activities are AI-suggested and may be inaccurate or outdated. Please confirm names,
+          prices, and opening hours before booking.
+        </p>
       </div>
 
       <div className="relative space-y-8 pl-4">

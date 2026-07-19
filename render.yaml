@@ -1,0 +1,38 @@
+# Render Blueprint: free FastAPI web service + free Redis (Key Value).
+# The LangGraph pipeline runs in-process via FastAPI BackgroundTasks (no separate worker).
+# Deploy: push to GitHub, then in Render create a new Blueprint from this repo and set the
+# secret env vars (marked sync:false) in the dashboard.
+services:
+  - type: web
+    name: travel-planner-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./agentic_travel_planner/Dockerfile
+    dockerContext: ./agentic_travel_planner
+    healthCheckPath: /docs
+    envVars:
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: travel-redis
+          property: connectionString
+      # Set to your HuggingFace Space origin once it exists, e.g.
+      # https://<user>-<space>.hf.space  (comma-separate multiple origins)
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: GEOAPIFY_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # Optional: switch to OpenAI instead of Groq (then also set OPENAI_API_KEY)
+      # - key: LLM_PROVIDER
+      #   value: openai
+
+  - type: keyvalue
+    name: travel-redis
+    plan: free
+    ipAllowList: []   # internal only — reachable from the web service, not the public internet

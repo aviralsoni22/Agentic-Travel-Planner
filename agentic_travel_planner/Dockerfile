@@ -21,5 +21,5 @@ COPY . .
 # 8. Tell Python where to find your src module
 ENV PYTHONPATH=/app/src
 
-# 9. Default Command
-CMD ["uvicorn", "agentic_travel_planner.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# 9. Default Command — honor $PORT (Render sets it; falls back to 8000 locally)
+CMD ["sh", "-c", "uvicorn agentic_travel_planner.app:app --host 0.0.0.0 --port ${PORT:-8000}"]

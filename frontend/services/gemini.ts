@@ -1,7 +1,8 @@
 import { TripPlan } from '../types';
 
-// Chat now goes through the backend (/api/chat) so the Gemini key stays server-side.
-const API_URL = '/api';
+// Chat goes through the backend so the Gemini key stays server-side.
+// Local dev uses the Vite proxy ('/api'); production builds set VITE_API_BASE to the backend URL.
+const API_URL = import.meta.env.VITE_API_BASE || '/api';
 
 export interface ChatTurn {
   role: 'user' | 'model';

@@ -1,18 +1,49 @@
 import os
 import json
+import uuid
 from typing import List
 
+import redis
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from celery.result import AsyncResult
-from .worker import generate_plan_task, celery_app
+
+from .graph import build_graph
+from . import tools
 
 app = FastAPI(
     title="Async Agentic Travel Planner",
-    description="Non-blocking API using Redis & Celery",
-    version="2.0.0"
+    description="Non-blocking API: the LangGraph pipeline runs in a background task, status in Redis",
+    version="2.1.0",
 )
+
+# CORS: the frontend is served from a different origin in production (HuggingFace Space).
+# Set ALLOWED_ORIGINS to a comma-separated list of origins; defaults to "*" for local dev.
+_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_origins or ["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Redis holds job status/result so polling survives across requests (single free web instance).
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+_r = redis.from_url(redis_url, decode_responses=True)
+STATUS_TTL = 3600  # seconds a finished plan stays retrievable
+
+# Compile the graph once at import (reused across background tasks in this process).
+_GRAPH = build_graph()
+
+
+def _key(task_id: str) -> str:
+    return f"plan:{task_id}"
+
+
+def _set_status(task_id: str, payload: dict) -> None:
+    _r.setex(_key(task_id), STATUS_TTL, json.dumps(payload))
+
 
 class TravelPlanRequest(BaseModel):
     source: str = Field(..., description="Origin city/region/country")
@@ -25,55 +56,58 @@ class TravelPlanRequest(BaseModel):
     group_category: str = Field(..., description="Group type")
     currency: str = Field(..., description="Currency")
 
+
+def _run_plan(task_id: str, inputs: dict) -> None:
+    """Background job: run the LangGraph pipeline and store the result in Redis."""
+    try:
+        _set_status(task_id, {"status": "processing"})
+        # ponytail: tools.API_CALLS is a module global, so concurrent runs share the counter;
+        # fine for a single-user demo, give each run its own counter if that changes.
+        tools.reset_counter()
+        state = {
+            **inputs,
+            "feedback": [], "revision_count": 0,
+            "flight_retries": 0, "hotel_retries": 0, "activity_retries": 0, "api_calls": 0,
+        }
+        result = _GRAPH.invoke(state, config={"recursion_limit": 60})
+        itinerary = result.get("final_itinerary")
+        if itinerary is not None:
+            _set_status(task_id, {"status": "completed", "plan": itinerary.model_dump(mode="json")})
+        else:
+            _set_status(task_id, {"status": "failed", "error": "No itinerary was produced."})
+    except Exception as e:  # noqa: BLE001 - surface the failure to the poller, don't crash the worker thread
+        _set_status(task_id, {"status": "failed", "error": str(e)})
+
+
 @app.post("/plan")
-def submit_plan(request: TravelPlanRequest):
-    """
-    Submits a job to the Redis Queue and returns a Task ID immediately.
-    """
-    # Convert Pydantic model to a standard dictionary
-    inputs = request.model_dump()
-    
-    # .delay() is the Magic Command.
-    # It sends the data to Redis instead of running the function here.
-    # This takes ~0.1 seconds.
-    task = generate_plan_task.delay(inputs)
-    
+def submit_plan(request: TravelPlanRequest, background_tasks: BackgroundTasks):
+    """Queue a planning job and return a task id immediately. Poll /plan/status/{task_id}."""
+    task_id = uuid.uuid4().hex
+    _set_status(task_id, {"status": "queued"})
+    background_tasks.add_task(_run_plan, task_id, request.model_dump())
     return {
         "status": "queued",
-        "task_id": task.id,
-        "message": "Plan is generating in the background. Poll /plan/status/{task_id}"
+        "task_id": task_id,
+        "message": "Plan is generating in the background. Poll /plan/status/{task_id}",
     }
 
-# --- 3. The Status Check Endpoint ---
+
 @app.get("/plan/status/{task_id}")
 def get_status(task_id: str):
-    """
-    Check the status of the background job using the Task ID.
-    """
-    # Look up the task in Redis
-    task_result = AsyncResult(task_id, app=celery_app)
-
-    if task_result.state == 'PENDING':
-        return {"status": "processing", "message": "Agents are working..."}
-    
-    elif task_result.state == 'SUCCESS':
-        # The worker returns the result dictionary here
-        return {
-            "status": "completed", 
-            "plan": task_result.result
-        }
-    
-    elif task_result.state == 'FAILURE':
-        return {
-            "status": "failed", 
-            "error": str(task_result.result)
-        }
-    
-    # Catch-all for other states (STARTED, RETRY, etc.)
-    return {"status": task_result.state}
+    """Check a background job. Returns processing until done, then the plan or the error."""
+    raw = _r.get(_key(task_id))
+    if raw is None:
+        return {"status": "failed", "error": "Unknown or expired task id."}
+    payload = json.loads(raw)
+    status = payload.get("status")
+    if status == "completed":
+        return {"status": "completed", "plan": payload.get("plan")}
+    if status == "failed":
+        return {"status": "failed", "error": payload.get("error", "unknown error")}
+    return {"status": "processing", "message": "Agents are working..."}
 
 
-# --- 4. Itinerary chat (server-side Gemini proxy) ---
+# --- Itinerary chat (server-side Gemini proxy) ---
 # The Gemini key stays here, never in the browser. The scope/grounding rules live server-side
 # too, so they can't be inspected or edited via client JS.
 GEMINI_MODEL = "gemini-2.5-flash"

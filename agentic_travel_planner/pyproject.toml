@@ -5,7 +5,6 @@ description = "agentic-travel-planner using LangChain + LangGraph"
 authors = [{ name = "Your Name", email = "you@example.com" }]
 requires-python = ">=3.10,<3.14"
 dependencies = [
-    "celery>=5.6.0",
     "fastapi>=0.121.3",
     "redis>=7.1.0",
     "uvicorn>=0.38.0",
@@ -20,7 +19,6 @@ dependencies = [
 
 [project.scripts]
 agentic_travel_planner = "agentic_travel_planner.main:run"
-run_crew = "agentic_travel_planner.main:run"
 
 [build-system]
 requires = ["hatchling"]

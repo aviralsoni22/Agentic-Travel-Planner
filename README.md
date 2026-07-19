@@ -1,6 +1,6 @@
 # Agentic AI Travel Planner 🌍✈️
 
-A production-oriented multi-agent system powered by **CrewAI** that automates end-to-end travel planning. This system orchestrates 5 specialized AI agents in a hierarchical structure to decompose user intent, search real-time data, and generate bookable itineraries with strict budget adherence.
+**Booking.ai** turns one form (where, when, who, how much) into a complete, bookable trip: round-trip flights, a hotel, and a day-by-day itinerary that fits the budget. A **LangGraph** agent pipeline searches real flight, hotel and activity data, re-plans itself whenever a step comes back over budget, and lets the LLM make the judgment calls while Python owns every dollar of arithmetic, so the budget never drifts.
 
 ---
 
@@ -28,162 +28,157 @@ For Online Travel Agencies (OTAs), every minute a user spends planning on an ext
 
 ---
 
-## 🚀 The Solution: Hierarchical Multi-Agent Orchestration
+## 🏗️ Architecture
 
-I built a **CrewAI-based hierarchical architecture** that treats travel planning as a delegated workflow between specialized agents. A central Manager agent decomposes user intent and delegates research tasks to specialists. Unlike a standard chatbot, this system uses **Tool Calling** to interact with real-world APIs, ensuring that every suggestion is actually bookable and within budget.
+Two units: a **React frontend** and a **FastAPI backend**. The backend runs the LangGraph pipeline in a FastAPI **BackgroundTask** (no Celery/worker process) and stores job status in **Redis**; the frontend polls for the result.
 
-### Key Features
+```
+ ┌──────────────┐   POST /plan          ┌──────────────────────────┐
+ │   Frontend   │ ─────────────────────▶│  FastAPI (app.py)        │
+ │ React + Vite │   GET /plan/status/id │   • enqueues BackgroundTask
+ │              │ ◀─────────────────────│   • runs LangGraph pipeline
+ │              │   POST /chat          │   • writes status → Redis  │
+ └──────────────┘                       └───────────┬──────────────┘
+                                                     │
+                        ┌────────────────────────────┼───────────────────────┐
+                        ▼                             ▼                        ▼
+                 ┌────────────┐              ┌────────────────┐        ┌──────────────┐
+                 │   Redis    │              │  LangGraph     │        │  External    │
+                 │ job status │              │  StateGraph    │──tools▶│  APIs        │
+                 └────────────┘              └────────────────┘        │ RapidAPI,    │
+                                                                       │ Geoapify,    │
+                                                                       │ Gemini(chat) │
+                                                                       └──────────────┘
+```
 
-* **Hierarchical 5-Agent Architecture:** A Manager agent orchestrates 4 specialists (Flight Researcher, Hotel Researcher, Activity Booker, Budgeting Agent) with explicit delegation authority.
-* **Dual-Role Budgeting Agent:** The Budgeting Agent runs twice in the workflow: first to allocate the total budget across categories (flight, hotel, activity), then to audit the final assembled itinerary against the original budget.
-* **Sequential Budget Propagation:** Each specialist passes `updated_remaining_budget` to the next, ensuring the system tracks budget consumption as the plan develops.
-* **Adaptive Budget Flexibility:** The Flight Researcher can exceed its allocation if needed, provided 40% of the total budget remains for hotels and activities. This prevents rigid failures when allocations are too tight.
-* **Pydantic Output Validation:** All inter-agent communication validated against strict Pydantic schemas (FlightResearchTaskOutput, FinalItinerary) to enforce structured outputs and deterministic agent behavior.
-* **Async Architecture:** Celery + Redis for non-blocking task execution, enabling 1-3 minute agent runs without HTTP timeouts.
+### The LangGraph pipeline (`graph.py`)
+
+Deterministic edges, not a manager LLM. After every research node a Python **budget checkpoint** compares real cost against the money left and decides: continue, retry, or re-plan.
+
+```
+START → allocate_budget → flight_node → hotel_node → activity_node → assemble → final_critic → END
+             ▲                 │            │             │                          │
+             └── re-plan ──────┴────────────┴─────────────┘◀── over budget / retry ──┘
+                 (MAX_REVISIONS=2)          (PER_NODE_RETRIES=2 per node)
+```
+
+| Node | Model | Does | Source |
+|---|---|---|---|
+| `allocate_budget` | reasoning | Returns budget split **ratios**; `budget.py` computes exact allocations | none |
+| `flight_node` | worker | Round-trip search (two one-way legs, morning-out / night-return) | Booking.com / RapidAPI |
+| `hotel_node` | worker | Best-value hotel within remaining budget | Booking.com / RapidAPI + Geoapify |
+| `activity_node` | worker | Iconic, interest-matched attractions with realistic costs | Geoapify + model knowledge |
+| `assemble` | reasoning | Day-by-day itinerary; Python overwrites all totals | prior outputs |
+| `final_critic` | reasoning | Judges coherence; can trigger a bounded re-plan | assembled plan |
+
+Over budget → re-select cheaper (2 tries) → re-plan the whole split (2 tries) → accept best-effort with the shortfall recorded in `failures`. The caps guarantee termination.
+
+---
+
+## ✨ Key Features
+
+- **Deterministic graph, not a manager agent.** Control flow is code, so no tokens are wasted on delegation and runs can't spin.
+- **LLM picks ratios, Python does the math.** `budget.py` computes every allocation and total, so budget arithmetic errors are impossible.
+- **Bounded budget feedback loop.** Retry the node, re-plan the split, then accept best-effort. Two caps make termination provable.
+- **Provider toggle.** `LLM_PROVIDER` switches worker + reasoning tiers between **Groq** (free, default) and **OpenAI**.
+- **Controlled tool loop.** Tool calls are driven manually, then a no-tools call structures the output, dodging Groq's tool-enforcement crash.
+- **Non-blocking.** `/plan` returns a `task_id` instantly; the pipeline runs in a BackgroundTask and the client polls `/plan/status/{id}`.
+- **API caching.** `tools/cache.py` memoizes RapidAPI / Geoapify so retries reuse fetched offers.
+- **Server-side chat.** `/chat` proxies Gemini with the key on the server and an itinerary-only scope guard the browser can't bypass.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Orchestration:** CrewAI (Hierarchical Process)
-* **Backend:** Python, FastAPI, Uvicorn (Server)
-* **Async Processing:** Celery, Redis (Broker & Result Backend)
-* **Frontend:** React, Vite, TypeScript, Lucide React
-* **LLMs:** GPT-4o (Manager), GPT-4o-mini (Specialists)
-* **Validation:** JSON Schema, Pydantic
-* **External APIs:** RapidAPI (Flights), Booking.com via RapidAPI (Hotels), Geoapify (Activities)
+| Layer | Tech |
+|---|---|
+| Agent orchestration | LangGraph (`StateGraph`) + LangChain |
+| Backend | FastAPI, Uvicorn, FastAPI BackgroundTasks |
+| Job status | Redis |
+| LLMs | Groq (`llama-3.3-70b-versatile` / `openai/gpt-oss-120b`) or OpenAI (`gpt-4.1-mini` / `gpt-4.1`) |
+| Chat | Google Gemini (`gemini-2.5-flash`), server-side |
+| Frontend | React 19, Vite, TypeScript, Recharts, Lucide |
+| External data | Booking.com via RapidAPI (flights + hotels), Geoapify (locations) |
+| Packaging | uv, Docker, docker-compose |
 
 ---
 
-## 🏗️ Architecture Overview
+## ⚡ Run It Locally
 
-The system runs as a 3-tier architecture:
+Everything runs through Docker Compose: Redis, the FastAPI api, and the Vite frontend.
 
-**Frontend Tier:** React + TypeScript form captures structured user input (origin, destination, dates, budget, interests).
+**Prerequisites:** Docker Desktop, and API keys for Groq (free, console.groq.com), RapidAPI (Booking.com), Geoapify, and Gemini.
 
-**API Tier:** FastAPI receives requests and queues them through Celery + Redis for async processing. This decouples long-running agent execution from user-facing latency.
+```bash
+# 1. Clone
+git clone https://github.com/aviralsoni22/Agentic-Travel-Planner.git
+cd Agentic-Travel-Planner
 
-**Agent Tier:** A hierarchical CrewAI workflow where the Manager delegates tasks sequentially:
+# 2. Backend env
+cp agentic_travel_planner/.env.example agentic_travel_planner/.env
+#   then fill in GROQ_API_KEY, RAPIDAPI_KEY, GEOAPIFY_KEY, GEMINI_API_KEY
 
-1. **Initial Budget Allocation:** Manager delegates to Budgeting Agent, which splits the total budget into flight, hotel, and activity allocations.
-2. **Flight Research:** Manager delegates to Flight Researcher with `allocated_flight_budget`. Returns selected round-trip flights and `updated_remaining_budget`.
-3. **Hotel Research:** Manager delegates to Hotel Researcher with the updated remaining budget. Returns selected hotel and updated remaining budget.
-4. **Activity Planning:** Manager delegates to Activity Booker with the latest remaining budget. Returns selected activities and final remaining budget.
-5. **Final Audit:** Manager delegates to Budgeting Agent again. Sums all actual costs, computes variance, asserts `budget_ok`, and assembles the FinalItinerary.
+# 3. Start everything
+docker-compose up --build
+```
 
-![Architecture diagram](architecture.png)
+Open **http://localhost:3000**. The api is at `http://localhost:8000` (`/docs` for the OpenAPI UI). The frontend proxies `/api` to the api service, so no frontend keys are needed. A run takes ~2 minutes; the UI polls until the itinerary is ready.
+
+> To run just the graph once from the CLI (no server): `docker-compose run --rm api python -m agentic_travel_planner.main`.
 
 ---
 
-## 🔑 Key Technical Decisions
+## 🔌 API
 
-**Why hierarchical CrewAI process?** Unlike sequential processes where agents run in fixed order, hierarchical delegation lets the Manager re-plan if a specialist fails. If Hotel Researcher cannot find a hotel within budget, the Manager can re-delegate with adjusted constraints rather than crashing the whole crew.
+`POST /plan` — start a job → `{ "status": "queued", "task_id": "<id>" }`
+`GET  /plan/status/{task_id}` — poll → `processing`, then `completed` (with `plan`) or `failed` (with `error`)
+`POST /chat` — itinerary-scoped Q&A via server-side Gemini → `{ "reply": "..." }`
 
-**Why Celery + Redis?** Multi-agent execution can take 1-3 minutes. Synchronous HTTP would time out. Celery offloads the work asynchronously, and Redis serves as both the job broker and the result store.
+`/plan` body: `source, destination, start_date, end_date, num_travelers, budget, interests, group_category, currency`.
 
-**Why two LLM tiers (gpt-4o vs gpt-4o-mini)?** The Manager needs strong reasoning to handle delegation, replanning, and synthesis decisions, justifying gpt-4o. Specialist agents execute well-scoped tasks with structured outputs, so gpt-4o-mini is sufficient and significantly cheaper at scale.
+---
 
-**Why dual-role Budgeting Agent?** Running budget logic at both ends of the workflow gives the system upfront constraint setting AND end-state validation. Most multi-agent systems only validate at the end, which means budget violations are caught too late to prevent wasted tool calls.
+## ☁️ Deployment
 
-**Why Pydantic schemas?** Tool inputs and outputs need strict validation to prevent agents from generating malformed API calls or hallucinated structures. Pydantic provides type safety and structured failure modes.
-
-**Why three separate APIs (RapidAPI, Booking.com, Geoapify)?** Each domain has different data quality. Booking.com has the strongest hotel data, RapidAPI aggregates flight options, and Geoapify handles location-based activity searches.
+Backend → **Render** (free web service + free Redis; pipeline runs in a BackgroundTask, no paid worker). Frontend → **HuggingFace Static Space** (static Vite build calling the Render backend via `VITE_API_BASE`). A `render.yaml` Blueprint is included. Full walkthrough: **[DEPLOY.md](DEPLOY.md)**.
 
 ---
 
 ## ⚠️ Known Limitations
 
-* **Cost scaling:** GPT-4o calls cost approximately $0.05-0.10 per full itinerary generation. Production deployment requires caching and prompt optimization.
-* **Edge cases:** Uncommon destinations or very tight budgets occasionally produce inconsistent agent reasoning, which is why the Manager has re-delegation authority.
-* **API dependency:** Three external APIs introduce reliability risks. Fallback logic exists but partial results may occur during outages.
-* **No persistent memory:** Each trip request runs independently; the system does not learn from previous user interactions.
+- **AI-curated activities can be inaccurate** (names, prices, hours). The UI shows a disclaimer; verify before booking.
+- **Groq free-tier token caps** per model; switch models or set `LLM_PROVIDER=openai` for fresh quota.
+- **External API dependence** (RapidAPI, Geoapify): failures are recorded in `failures`, but partial results can occur.
+- **Public endpoints are unauthenticated** — fine for a demo; add rate limiting and lock `ALLOWED_ORIGINS` for production.
 
 ---
 
-## 🚀 Future Improvements
+## 📁 Project Layout
 
-* RAGAS-based evaluation framework for measuring agent task accuracy
-* Phoenix or LangFuse integration for token, latency, and cost observability
-* User-specific preference memory across trip requests
-* Caching layer for common destinations to reduce LLM costs
-* Deeper integration with booking APIs for one-click reservations
-
----
-
-## ⚡ Getting Started
-
-### Prerequisites
-
-* **System**: Python 3.10+, Node.js 18+, Docker Desktop
-* **API Keys**: Groq (free — console.groq.com), RapidAPI (Booking.com), Geoapify
-
-### Installation
-
-#### 1. Clone the Repository
-
-```bash
-git clone https://github.com/aviralsoni22/agentic-travel-planner.git
-cd agentic-travel-planner
 ```
-
-#### 2. Configure Environment
-
-Create a `.env` file in the `agentic_travel_planner` directory (backend) and add your keys:
-
-```bash
-# agentic_travel_planner/.env
-GROQ_API_KEY=gsk_...            # free key from https://console.groq.com
-RAPIDAPI_KEY=...
-GEOAPIFY_KEY=...
-SERPER_API_KEY=...
-REDIS_URL=redis://travel_redis:6379/0  # compose service name; honored by worker.py
-# Optional model overrides (defaults shown):
-# GROQ_WORKER_MODEL=llama-3.3-70b-versatile
-# GROQ_REASONING_MODEL=openai/gpt-oss-120b
+Agentic-Travel-Planner/
+├── docker-compose.yml                  # redis + api + frontend (local)
+├── render.yaml                         # Render Blueprint (web + Redis)
+├── DEPLOY.md                           # deployment guide
+├── agentic_travel_planner/             # backend
+│   ├── Dockerfile · pyproject.toml · .env.example
+│   └── src/agentic_travel_planner/
+│       ├── app.py                      # FastAPI: /plan, /plan/status, /chat
+│       ├── graph.py                    # LangGraph StateGraph + budget checkpoints
+│       ├── budget.py                   # all money arithmetic
+│       ├── llms.py · prompts.py · models.py · state.py
+│       ├── main.py                     # CLI: run the graph once
+│       └── tools/                      # flight / hotel / activity search + cache
+└── frontend/                           # React 19 + Vite + TS
+    ├── App.tsx · components/ · context/
+    └── services/  api.ts · gemini.ts
 ```
-
-Create a `.env.local` file in the `frontend` directory and add your key:
-
-```bash
-# frontend/.env
-VITE_GEMINI_API_KEY=...
-```
-
-#### 3. Run Backend (Docker)
-
-This project requires Docker to orchestrate the AI Agents, API and Redis (used for both message queuing and result storage).
-
-```bash
-# From the root directory
-docker-compose up --build
-```
-
-Wait until you see "Application startup complete" in the logs.
-
-#### 4. Frontend Setup (React)
-
-Open a new terminal to run the UI:
-
-```bash
-# Navigate to frontend
-cd frontend
-
-# Install dependencies
-npm install
-
-# Run the dev server
-npm run dev
-```
-
-Visit the link in the frontend terminal to start planning.
 
 ---
 
 ## 📄 License
 
-MIT License - see LICENSE file for details.
-
----
+MIT. See [LICENSE](LICENSE).
 
 ## 👤 Built by
 

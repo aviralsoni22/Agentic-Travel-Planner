@@ -24,21 +24,6 @@ services:
       - ./agentic_travel_planner:/app
       - /app/.venv   
 
-  worker:
-    build: ./agentic_travel_planner
-    container_name: travel_worker
-    command: celery -A agentic_travel_planner.worker.celery_app worker --loglevel=info
-    environment:
-      - REDIS_URL=redis://travel_redis:6379/0
-      - PYTHONPATH=/app/src
-    env_file:
-      - ./agentic_travel_planner/.env
-    depends_on:
-      - redis
-    volumes:
-      - ./agentic_travel_planner:/app
-      - /app/.venv
-
   frontend:
     image: node:20-alpine
     container_name: travel_frontend
