@@ -29,6 +29,11 @@ def cached_get(key: Any, fetch: Callable[[], Any]) -> Any:
     return value
 
 
+def evict(key: Any) -> None:
+    """Drop a cached entry (e.g. an empty/bad response that shouldn't poison retries)."""
+    _CACHE.pop(key, None)
+
+
 def reset_counter() -> None:
     API_CALLS["count"] = 0
 

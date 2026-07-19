@@ -111,8 +111,9 @@ def _gather_with_tools(system: str, user: str, tool_obj, max_steps: int = 5):
         llm = base.bind_tools([tool_obj], tool_choice=tool_choice)
         try:
             ai = llm.invoke(messages)
-        except Exception:
-            break  # answer-turn tool_use_failed etc. — proceed with gathered results
+        except Exception as ex:  # answer-turn tool_use_failed etc. — proceed with gathered results
+            print(f"[llm:{tool_obj.name}] worker call failed at step {step}: {ex}", flush=True)
+            break
         messages.append(ai)
         last_content = ai.content or last_content
         calls = getattr(ai, "tool_calls", None) or []
@@ -153,6 +154,8 @@ def _run_and_parse(system: str, user: str, tool_list: list, model, tool_label: s
     """Gather tool data, then structure it. Returns (model_or_None, error_or_None)."""
     try:
         content, tool_results = _gather_with_tools(system, user, tool_list[0])
+        for r in tool_results:
+            print(f"[tool:{tool_list[0].name}] {str(r)[:300]}", flush=True)
         # if the worker's own answer already validates, take it (cheapest path)
         if content:
             try:
@@ -163,6 +166,7 @@ def _run_and_parse(system: str, user: str, tool_list: list, model, tool_label: s
             return None, "no tool results produced"
         return _structure_from(system, user, tool_results, model, tool_label), None
     except Exception as e:  # noqa: BLE001 - surface as feedback, don't crash the graph
+        print(f"[node:{tool_list[0].name}] error: {e}", flush=True)
         return None, str(e)
 
 

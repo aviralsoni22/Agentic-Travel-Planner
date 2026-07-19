@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from langchain_core.tools import StructuredTool
 
-from .cache import cached_get
+from .cache import cached_get, evict
 
 load_dotenv()
 
@@ -136,6 +136,8 @@ def search_hotels(
         dest_data = cached_get(("dest", base_city), lambda: _fetch_dest_id(base_city, headers))
         dest_list = dest_data.get("data") or dest_data.get("results") or []
         if not dest_list:
+            # Don't cache an empty answer — a transient blip would poison every retry.
+            evict(("dest", base_city))
             return json.dumps({"error": f"City '{destination}' not found."}, indent=2)
         dest_id = dest_list[0].get("dest_id")
         search_type = dest_list[0].get("search_type", "CITY")
