@@ -29,7 +29,7 @@ automatically.
    | `RAPIDAPI_KEY` | your RapidAPI (Booking.com) key |
    | `GEOAPIFY_KEY` | your Geoapify key |
    | `GEMINI_API_KEY` | your Gemini key (for chat) |
-   | `ALLOWED_ORIGINS` | your HF Space origin, e.g. `https://<user>-<space>.hf.space` |
+   | `ALLOWED_ORIGINS` | your HF Space origin, e.g. `https://<user>-<space>.static.hf.space` |
 
    > Deploy the frontend first if you want the exact Space URL, or set `ALLOWED_ORIGINS`
    > after the Space exists and redeploy. You can also set it to `*` temporarily to test.
@@ -68,8 +68,10 @@ HF Static Spaces serve pre-built files (no build step), so build locally and pus
    ---
    ```
 4. Copy the **contents of `frontend/dist/`** (the `index.html` and `assets/` folder) into
-   the Space repo root, next to that `README.md`, and push. The Space serves at
-   `https://<user>-<space>.hf.space`.
+   the Space repo root, next to that `README.md`, and push. Static Spaces serve at
+   `https://<user>-<space>.static.hf.space` — note the `.static.`; the plain
+   `https://<user>-<space>.hf.space` form 404s. If in doubt, read the `host` field from
+   `https://huggingface.co/api/spaces/<user>/<space>`.
 5. Back on Render, make sure `ALLOWED_ORIGINS` includes that exact origin, then redeploy
    the backend so CORS allows the Space.
 

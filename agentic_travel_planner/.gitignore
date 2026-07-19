@@ -208,3 +208,6 @@ __marimo__/
 
 # Generated output files
 output/
+
+# Local scratch
+test_api.py
